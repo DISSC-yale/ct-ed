@@ -10,16 +10,17 @@ import {deflatorTable} from '../utils'
 export type Info = {
   refs: {time: string; entity: string}
   time_range: {min: number; max: number}
-  entities: {[index: string]: {id: string; name: string}}
   deflator: ColumnTable
 }
 type VariableTypes = 'time' | 'entity_id' | 'entity_name' | 'weight' | 'binary' | 'categorical' | 'dollar' | 'value'
+export type Entities = {[index: string]: {id: string; name: string; color: string}}
 export type Metadata = {
   updated: string
   types: {[key: string]: VariableTypes}
   adjusters: {[key: string]: {label: string; applies_to: string; variable: string; function: string}}
   formula: FormulaSpec
   variable_parts: {[key: string]: {label: string}}
+  entities: Entities
 }
 export type Resources = {
   meta: Metadata
@@ -74,10 +75,8 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
     const info: Info = {
       refs: {entity: '', time: ''},
       time_range: {min: 0, max: 0},
-      entities: {},
       deflator: deflatorTable(),
     }
-    const selectEntities: {[key: string]: boolean} = {}
     Object.keys(meta.types).forEach(col => {
       const type = meta.types[col]
       if (type === 'time') {
@@ -135,18 +134,15 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
       info.time_range.min = range[0]
       info.time_range.max = range[1]
     }
-    if ('entity_id' in variable_types && 'entity_name' in variable_types) {
-      const id = variable_types.entity_id[0].id
-      const name = variable_types.entity_name[0].id
-      newData
-        .select([id, name])
-        .dedupe(id)
-        .objects()
-        .forEach((r: any) => {
-          info.entities[r[id]] = {id: r[id], name: r[name]}
-          selectEntities[r[id]] = true
-        })
+    if (meta.entities.id) {
+      const entities = meta.entities as unknown as {[key: string]: string[]}
+      meta.entities = {}
+      entities.id.forEach((id, i) => {
+        meta.entities[id] = {id, name: entities.name[i], color: entities.color[i]}
+      })
     }
+    const selectEntities: {[key: string]: boolean} = {}
+    Object.keys(meta.entities).forEach(id => (selectEntities[id] = true))
     const full = {
       meta,
       data: newData,

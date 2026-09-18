@@ -10,20 +10,20 @@ export const entityOptions: {[index: string]: EntityOption} = {}
 export function FilterEntities() {
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
-  const {info, selectEntities} = useContext(DataContext) as Resources
+  const {meta, selectEntities} = useContext(DataContext) as Resources
   const makeEntityOption = useCallback(
     (id: string) => {
       if (!(id in entityOptions)) {
-        const entity = info.entities[id]
+        const entity = meta.entities[id]
         entityOptions[id] = {key: id, searchString: JSON.stringify(entity), name: entity.name}
       }
       return entityOptions[id]
     },
-    [info.entities],
+    [meta.entities],
   )
   const allEntities: EntityOption[] = useMemo(
-    () => Object.keys(info.entities).map(makeEntityOption),
-    [!!info.entities, makeEntityOption],
+    () => Object.keys(meta.entities).map(makeEntityOption),
+    [!!meta.entities, makeEntityOption],
   )
   const filteredEntities = useMemo(
     () => Object.keys(view.entities_select).map(makeEntityOption),

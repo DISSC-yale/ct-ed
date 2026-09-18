@@ -27,19 +27,28 @@ if __name__ == "__main__":
         for i, col in enumerate(names)
     ]
 
-    data = data.merge(
-        ecs[[col for col in ecs if not col.startswith("param")]].rename(
-            columns={"town_name": "district_name"}
-        ),
-        how="outer",
-        on=["fiscal_year", "district_name"],
-    ).sort_values(["fiscal_year", "district_name"])
+    data = (
+        ecs[[col for col in ecs if not col.startswith("param")]]
+        .rename(columns={"town_name": "district_name"})
+        .merge(
+            data,
+            how="left",
+            on=["fiscal_year", "district_name"],
+        )
+        .sort_values(["fiscal_year", "district_name"])
+    )
     data.loc[data["district_code"].isna(), "district_code"] = data.loc[
         data["district_code"].isna(), "town_code"
     ]
 
+    # define variables
+    with open("metadata.json", encoding="utf-8") as file:
+        metadata = json.load(file)
+    with gzip.open("public/metadata.json.gz", "wb") as file:
+        file.write(json.dumps(metadata, separators=(",", ":")).encode())
+
     # standardize variable names
-    data.drop(columns=["town_code", "sp__ppe_total"], inplace=True)
+    data.drop(columns=["town_code", "sp__ppe_total", "district_name"], inplace=True)
     data.rename(
         columns={
             "enrollment_total": "enrollment__total",
@@ -116,9 +125,3 @@ if __name__ == "__main__":
             .replace("NaN", "null")
             .encode()
         )
-
-    # define variables
-    with open("metadata.json", encoding="utf-8") as file:
-        metadata = json.load(file)
-    with gzip.open("public/metadata.json.gz", "wb") as file:
-        file.write(json.dumps(metadata, separators=(",", ":")).encode())

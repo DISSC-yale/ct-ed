@@ -75,7 +75,7 @@ export function DataMenu() {
                 <FlipCameraAndroid />
               </IconButton>
             </Stack>
-            <Typography>Traces</Typography>
+            <Typography>Lines</Typography>
             <SingleSelect
               label="Level Source"
               options={lineOptions}

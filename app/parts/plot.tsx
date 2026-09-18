@@ -10,7 +10,6 @@ import {
   TitleComponent,
   ToolboxComponent,
   TooltipComponent,
-  VisualMapComponent,
 } from 'echarts/components'
 import {useCallback, useContext, useEffect, useRef} from 'react'
 import {CanvasRenderer} from 'echarts/renderers'
@@ -18,24 +17,7 @@ import {Box, useColorScheme} from '@mui/material'
 import {formatNumber, tooltipPlacer} from '../utils'
 import type {Variable} from '../data/variable'
 import {ViewActionContext, ViewDef} from '../data/view'
-import type {Info} from '../data/load'
-
-const palettes = {
-  lapaz: ['#190C64', '#212A78', '#27468B', '#315E98', '#4177A1', '#5B8BA2', '#7B9A9E', '#A0A695', '#CAB79D', '#F1D5C4'],
-  lipari: [
-    '#0F3456',
-    '#3B5378',
-    '#615D78',
-    '#7F5F70',
-    '#A36267',
-    '#CE685E',
-    '#E88768',
-    '#E5AA7F',
-    '#EACCA4',
-    '#FDF4D9',
-  ],
-  roma: ['#190C64', '#232D7B', '#294B8E', '#35669D', '#4C80A3', '#6D95A0', '#93A198', '#BFB199', '#EED2BF', '#FEF2F2'],
-}
+import {DataContext, type Resources} from '../data/load'
 
 function axisMin({min}: {min: number}, adj = 1) {
   return +(
@@ -137,12 +119,10 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
 export default function Plot({
   input,
   view,
-  info,
   modeOverride,
 }: {
   input: PlotInput
   view: ViewDef
-  info: Info
   modeOverride?: 'dark' | 'light'
 }) {
   useEffect(() => {
@@ -156,11 +136,11 @@ export default function Plot({
       LineChart,
       CanvasRenderer,
       GraphicComponent,
-      VisualMapComponent,
     ])
   }, [])
   const {mode} = useColorScheme()
   const viewAction = useContext(ViewActionContext)
+  const {info, meta} = useContext(DataContext) as Resources
   const useMode = modeOverride || mode
   const {series, panels, range, varIndices} = input
   panelContainer.current = panels
@@ -181,8 +161,8 @@ export default function Plot({
     if (chart)
       chart.on('click', params => {
         if (Array.isArray(params.data)) {
-          const id = params.data[params.data.length - 1] as string
-          if (id in info.entities) viewAction({key: 'profile', value: id})
+          const id = params.data[varIndices[info.refs.entity]] as string
+          if (id in meta.entities) viewAction({key: 'profile', value: id})
         }
       })
     window.addEventListener('resize', resize)
@@ -192,10 +172,10 @@ export default function Plot({
       }
       window.removeEventListener('resize', resize)
     }
-  }, [useMode])
+  }, [useMode, varIndices])
   const formatter = useCallback(
     ({marker, seriesName, value}: {marker: string; seriesName: string; value: number[]}) => {
-      const entity = info.refs.entity in varIndices && info.entities[value[varIndices[info.refs.entity]]]
+      const entity = info.refs.entity in varIndices && meta.entities[value[varIndices[info.refs.entity]]]
       return (
         '<div class="tooltip-table">' +
         (view.color ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
@@ -221,7 +201,7 @@ export default function Plot({
         '</strong></td></tr></table></div>'
       )
     },
-    [view, info.entities],
+    [view, meta.entities],
   )
   useEffect(() => {
     if (container.current) {
@@ -233,7 +213,7 @@ export default function Plot({
           const darkMode = useMode === 'dark'
           const colors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
           panelSpacing.legendWidth = 0
-          if (view.color) {
+          if (view.lines) {
             series.forEach(s => {
               const len = (s.name as string).length
               if (len > panelSpacing.legendWidth) panelSpacing.legendWidth = len
@@ -245,7 +225,6 @@ export default function Plot({
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
           panelContainer.current = panels
           const {title, grid} = resizePanels(frame, panels)
-          const showLegend = view.lines && series.length < 20
           chart.setOption(
             {
               darkMode,
@@ -255,7 +234,7 @@ export default function Plot({
                 right: 'right',
                 orient: 'vertical',
                 type: 'scroll',
-                data: showLegend ? [...new Set(series.map(s => s.name).sort())] : [],
+                data: view.lines ? [...new Set(series.map(s => s.name).sort())] : [],
               },
               backgroundColor: colors.bg,
               tooltip: {
@@ -271,19 +250,6 @@ export default function Plot({
                 position: tooltipPlacer,
                 appendToBody: true,
               },
-              visualMap:
-                showLegend ? null : (
-                  {
-                    calculable: true,
-                    max: range.y[1],
-                    inRange: {
-                      color: palettes[mode === 'dark' ? 'lipari' : 'lapaz'],
-                    },
-                    right: 0,
-                    top: 50,
-                    dimension: 1,
-                  }
-                ),
               xAxis: panels.map((_, i) => {
                 return {
                   type: 'value',

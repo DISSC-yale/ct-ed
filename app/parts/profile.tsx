@@ -120,20 +120,20 @@ function SummaryRow({label, value, summary}: {label?: string; value: number; sum
 }
 
 export function ProfileDisplay() {
-  const {info, data, variable_types, variables, categories} = useContext(DataContext) as Resources
+  const {info, meta, data, variable_types, variables, categories} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const time = view.select_time || '' + 2025
   const allEntities: EntityOption[] = useMemo(
     () =>
-      Object.keys(info.entities).map(id => {
+      Object.keys(meta.entities).map(id => {
         if (!(id in entityOptions)) {
-          const entity = info.entities[id]
+          const entity = meta.entities[id]
           entityOptions[id] = {key: id, searchString: JSON.stringify(entity), name: entity.name}
         }
         return entityOptions[id]
       }),
-    [!!info.entities],
+    [!!meta.entities],
   )
   const summaries = useMemo(() => {
     const formulas: {[key: string]: string} = {}

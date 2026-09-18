@@ -44,8 +44,8 @@ export type ViewAction =
 const defaultView: ViewDef = {
   lock_range: true,
   x: new Variable('general__fiscal_year'),
-  y: new Variable('ecs__entitlement_with_alliance_hh'),
-  lines: '',
+  y: new Variable('computed__entitlement'),
+  lines: 'general__district_code',
   color: '',
   symbol: '',
   x_panels: '',
@@ -75,7 +75,7 @@ export function viewToString(view: ViewDef) {
       }
     } else {
       const value = view[v as 'color']
-      if ((!!value || 'number' === typeof value) && value !== defaultParams[v as 'color']) {
+      if (value !== defaultParams[v as 'color']) {
         p.push(v + '=' + value)
       }
     }
@@ -111,7 +111,6 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       defaultView.min_time = defaultParams.min_time = '' + info.time_range.min
       defaultView.max_time = defaultParams.max_time = '' + info.time_range.max
     }
-    defaultParams.color = info.refs.entity
     defaultParams.x = new Variable(defaultParams.x, categories)
     defaultParams.y = new Variable(defaultParams.y, categories)
     const params = {...defaultParams}

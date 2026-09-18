@@ -5,12 +5,8 @@ import Plot, {PlotInput} from '../parts/plot'
 import {SelectedContext, ViewContext, type ViewDef} from './view'
 import {Variable} from './variable'
 
-function getColRef(ref: string) {
-  return ref
-}
-
 export function DataDisplay({mode}: {mode?: 'dark' | 'light'}) {
-  const {info, categories} = useContext(DataContext) as Resources
+  const {info, meta, categories} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const selected = useContext(SelectedContext)
   if (!view.x.categories) view.x = new Variable(view.x, categories)
@@ -21,16 +17,18 @@ export function DataDisplay({mode}: {mode?: 'dark' | 'light'}) {
         selected,
         view,
         {
-          panelX: getColRef(view.x_panels),
-          panelY: getColRef(view.y_panels),
-          lines: getColRef(view.lines),
-          color: getColRef(view.color),
-          symbol: getColRef(view.symbol),
+          panelX: view.x_panels,
+          panelY: view.y_panels,
+          lines: view.lines,
+          color: view.color,
+          symbol: view.symbol,
+          time: info.refs.time,
+          entity: info.refs.entity,
         },
-        info,
+        meta.entities,
       ),
-    [view, selected, !!info.entities, !!info.refs],
+    [view, selected, !!meta.entities, !!info.refs],
   )
 
-  return <Plot input={series as PlotInput} view={view} modeOverride={mode} info={info} />
+  return <Plot input={series as PlotInput} view={view} modeOverride={mode} />
 }

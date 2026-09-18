@@ -1,6 +1,6 @@
 import type {LineSeriesOption} from 'echarts/charts'
 import {ColumnTable} from 'arquero'
-import type {Info} from '../data/load'
+import type {Entities} from '../data/load'
 import {Panel, PlotInput} from '../parts/plot'
 import {unique} from '../utils'
 import type {ViewDef} from './view'
@@ -8,13 +8,24 @@ import type {ViewDef} from './view'
 const colors = ['#A3651E', '#2F8CBF', '#C4AB4B', '#72CED5', '#C8E9B6', '#7E1700', '#1549A2']
 const symbols = ['triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow', 'circle']
 
+function indexMap(data: ColumnTable, variable: string) {
+  const levelMap: {[index: string]: number} = {}
+  ;(
+    data
+      .ungroup()
+      .rollup({l: `array_agg_distinct(d.${data.columnIndex(variable) === -1 ? 'level' : variable})`})
+      .array('l')[0] as string[]
+  ).forEach((l, i) => (levelMap[l] = i))
+  return levelMap
+}
+
 export function makeSeries(
   selectData: ColumnTable,
   view: ViewDef,
-  refs: {panelX: string; panelY: string; lines: string; color: string; symbol: string},
-  info: Info,
+  refs: {panelX: string; panelY: string; lines: string; color: string; symbol: string; time: string; entity: string},
+  entities: Entities,
 ) {
-  const {panelX, panelY, color, symbol} = refs
+  const {panelX, panelY, color, symbol, lines, time, entity} = refs
   const xPanelLevels = panelX ? unique(selectData, panelX) : ['']
   const yPanelLevels = panelY ? unique(selectData, panelY) : ['']
   const nXLevels = xPanelLevels.length
@@ -22,23 +33,10 @@ export function makeSeries(
   const data: LineSeriesOption[] = []
   const panels: Panel[] = []
   const symbolMap: {[index: string]: {symbol: string; opacity: number}} = {}
-  const lineVars: string[] = []
-
-  if (view.time_agg == 'all') lineVars.push(info.refs.time)
-  if (color) lineVars.push(color)
-  if (color && symbol) {
-    lineVars.push(symbol)
-    unique(selectData, symbol).forEach((l, i) => {
-      symbolMap[l] = {
-        symbol: symbols[i % 7],
-        opacity: 0.8,
-      }
-    })
-  }
   const baseSeries: LineSeriesOption = {
     type: 'line',
     symbolSize: 10,
-    color: color ? '' : '#a5cdff',
+    color: color || lines ? '' : '#a5cdff',
     itemStyle: {opacity: 1},
     lineStyle: {width: 1, opacity: 1},
     emphasis: {
@@ -55,9 +53,23 @@ export function makeSeries(
     y: [Infinity, -Infinity, -Infinity],
     panel: [nXLevels, yPanelLevels.length],
   }
+  const assignColors = lines && lines !== entity
+  const colorMap = assignColors ? indexMap(selectData, lines) : {}
   const varIndices: {[index: string]: number} = {}
-  const idVars = [...new Set([info.refs.time, refs.color, refs.symbol, refs.lines, info.refs.entity].filter(x => !!x))]
-  const aggLines = refs.lines && refs.lines !== info.refs.entity
+  const lineVars = [...new Set([color, symbol, lines].filter(x => !!x))]
+  const aggLines = lines && lines !== entity
+
+  if (view.time_agg == 'all') lineVars.push(time)
+  if (color) lineVars.push(color)
+  if (color && symbol) {
+    lineVars.push(symbol)
+    unique(selectData, symbol).forEach((l, i) => {
+      symbolMap[l] = {
+        symbol: symbols[i % 7],
+        opacity: 0.8,
+      }
+    })
+  }
 
   const baseData = selectData
   xPanelLevels.forEach((x, xi) => {
@@ -71,18 +83,16 @@ export function makeSeries(
       d = view.y.addTo(d, 'y')
       d = view.x.addTo(d, 'x')
       d = d.filter(`d.x != null & d.y != null`)
-      if (aggLines) d = d.filter(`d.${refs.lines} !== null`)
+      if (aggLines) d = d.filter(`d.${lines} !== null`)
       if (!d.numRows()) return
-      const nEntities = unique(d, info.refs.entity).length
+      const nEntities = unique(d, entity).length
       index++
       if (aggLines) {
-        d = d
-          .groupby(refs.lines, info.refs.time)
-          .rollup({x: 'mean(d.x)', y: 'mean(d.y)'})
-          .groupby(refs.lines)
-          .select('x', 'y', info.refs.time, refs.lines)
+        d = d.groupby(lines, time).rollup({x: 'mean(d.x)', y: 'mean(d.y)'}).groupby(lines).select('x', 'y', time, lines)
+      } else if (lineVars.includes(entity)) {
+        d = d.select('x', 'y', lineVars).groupby(entity)
       } else {
-        d = d.select('x', 'y', idVars).groupby(info.refs.entity)
+        d = d.groupby(lineVars).rollup({x: 'mean(d.x)', y: 'mean(d.y)'}).select('x', 'y', lineVars)
       }
       d = d.reify()
       d.columnNames().forEach((v, i) => (varIndices[v] = i))
@@ -91,15 +101,24 @@ export function makeSeries(
         const series = {...baseSeries, xAxisIndex: index, yAxisIndex: index} as LineSeriesOption
         series.name = label
         series.id = x + y + inds.join(',')
-        if (refs.lines) {
-          const lineLevel = d.get(refs.lines, inds[0])
-          const entity = info.entities[lineLevel]
-          series.id += entity ? entity.name : '' + lineLevel
-          series.name = entity ? entity.name : '' + lineLevel
-        } else if (color) {
-          const colorLevel = d.get(color, inds[0])
-          series.id += '' + colorLevel
-          series.name = '' + colorLevel
+        if (lines) {
+          const lineLevel = d.get(lines, inds[0])
+          const entity = entities[lineLevel]
+          if (entity) {
+            series.id += entity.id
+            series.name = entity.name
+            series.color = entity.color
+          } else {
+            series.id += series.name = '' + lineLevel
+          }
+        }
+        if (assignColors) {
+          const colorLevel = d.get(color || lines, inds[0])
+          if (!lines) {
+            series.id += '' + colorLevel
+            series.name = '' + colorLevel
+          }
+          series.color = colors[colorMap[colorLevel]]
           if (symbol) {
             series.name += ', ' + d.get(symbol, inds[0])
             const symbolId = d.get(symbol, inds[0])
@@ -112,19 +131,15 @@ export function makeSeries(
           } else {
             series.symbol = 'circle'
           }
-        } else {
-          series.name = 'series'
         }
-        if (series.name) {
-          const seriesData: (string | number)[][] = []
-          series.data = seriesData
-          inds.forEach(i => {
-            const data = Object.values(d.object(i))
-            dataArray.push([data[0], data[1]])
-            seriesData.push(data)
-          })
-          data.push(series)
-        }
+        const seriesData: (string | number)[][] = []
+        series.data = seriesData
+        inds.forEach(i => {
+          const data = Object.values(d.object(i))
+          dataArray.push([data[0], data[1]])
+          seriesData.push(data)
+        })
+        data.push(series)
       })
       panels.push({
         label,
