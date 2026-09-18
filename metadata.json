@@ -1,0 +1,197 @@
+{
+  "updated": "2026-9-11",
+  "types": {
+    "general__fiscal_year": "time",
+    "general__district_code": "entity_id",
+    "general__district_name": "entity_name",
+    "ecs__psd_flag": "binary",
+    "ecs__alliance_district_flag": "binary",
+    "ecs__alliance_non_reform_flag": "binary",
+    "ecs__reform_district_flag": "binary",
+    "ecs__drg": "categorical",
+    "ecs__fully_funded_gt_prior_year": "categorical",
+    "ppe_ext__deflator": "weight"
+  },
+  "formula": {
+    "section": "ecs__",
+    "params": {
+      "digits": {
+        "label": "Number of digits to round to in each step.",
+        "category": "Precision",
+        "min": 0,
+        "max": 7,
+        "step_size": 1,
+        "value": 2
+      },
+      "adjustment_digits": {
+        "label": "Number of digits to round to for ENGL and MHI adjustment calculations.",
+        "category": "Precision",
+        "min": 0,
+        "max": 7,
+        "step_size": 1,
+        "value": 6
+      },
+      "dollar_digits": {
+        "label": "Number of digits to round to for dollar amounts.",
+        "category": "Precision",
+        "min": 0,
+        "max": 7,
+        "step_size": 1,
+        "value": 0
+      },
+      "final_digits": {
+        "label": "Number of digits to round to for the final dollar amounts.",
+        "category": "Precision",
+        "min": 0,
+        "max": 7,
+        "step_size": 1,
+        "value": 3
+      },
+      "need": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
+      "engl_mhi": {
+        "label": "B. Equalized net grand list per capita and median household income threshold.",
+        "category": "Primary Weight",
+        "step_size": 0.1,
+        "value": 1.35
+      },
+      "engl": {"label": "C. Equalized net grand list per capita weight.", "category": "Primary Weight", "value": 0.7},
+      "mhi": {"label": "D. Median household income weight", "category": "Primary Weight", "value": 0.3},
+      "non_alliance_min": {
+        "label": "E. Non-alliance district minimum aid ratio.",
+        "category": "Primary Weight",
+        "step_size": 0.01,
+        "value": 0.01
+      },
+      "alliance_min": {
+        "label": "F. Non-alliance district minimum aid ratio.",
+        "category": "Primary Weight",
+        "value": 0.1
+      },
+      "foundation": {"label": "G. Foundation value.", "category": "Primary Funding", "step_size": 1000, "value": 11525},
+      "underfunded": {"label": "H. Adjustment for underfunded districts.", "category": "Primary Funding", "value": 1},
+      "overfunded": {"label": "I. Adjustment for overfunded districts.", "category": "Primary Funding", "value": 0},
+      "resident": {"label": "Resident student adjustment factor.", "category": "Secondary", "value": 0.6},
+      "excess_resident": {
+        "label": "Excess resident student adjustment factor.",
+        "category": "Secondary",
+        "step_size": 0.1,
+        "value": 0.15
+      },
+      "poverty": {"label": "Poverty portion of free & reduced lunch.", "category": "Poverty", "value": 0.3},
+      "frpl_limit": {"label": "Free & reduced lunch limiter.", "category": "Poverty", "value": 0.6},
+      "frpl_concentration": {
+        "label": "Free & reduced lunch concentration adjustment factor.",
+        "category": "Poverty",
+        "step_size": 0.1,
+        "value": 0.6
+      },
+      "ell": {
+        "label": "English language literacy adjustment factor.",
+        "category": "Secondary",
+        "step_size": 0.1,
+        "value": 0.25
+      },
+      "pic": {
+        "label": "Public investment communities adjustment factors.",
+        "category": "Secondary",
+        "step_size": [1, 0.01],
+        "reference": "pic_decile",
+        "operator": "<=",
+        "value": [
+          [0, 0.0],
+          [5, 0.06],
+          [10, 0.05],
+          [15, 0.04],
+          [19, 0.03]
+        ]
+      },
+      "regional_bonus": {
+        "label": "Regional district bonus weight.",
+        "category": "Secondary",
+        "step_size": 100,
+        "value": 100
+      },
+      "endowed_bonus": {
+        "label": "Endowed Academis bonus weight.",
+        "category": "Secondary",
+        "step_size": 100,
+        "value": 100
+      }
+    },
+    "param_history": {
+      "2024": {
+        "underfunded": 0.2,
+        "overfunded": 0.1429,
+        "final_digits": 0
+      },
+      "2025": {
+        "underfunded": 0.565,
+        "overfunded": 0
+      }
+    },
+    "steps": {
+      "entitlement_prior": "s.entitlement|d.prior_year_entitlement",
+      "poverty": "round(d.frpl_students*p.need, p.digits)",
+      "resident": "round(d.resident_students*p.resident, p.digits)",
+      "high_poverty": "round(limit(d.frpl_students-s.resident, 0)*p.excess_resident, p.digits)",
+      "poverty_portion": "round(d.frpl_students/d.resident_students, p.digits)",
+      "poverty_limit": "s.poverty_portion > p.frpl_limit ? s.poverty_portion*p.frpl_limit : 0",
+      "poverty_concentrated": "round(d.resident_students*s.poverty_limit, p.digits)",
+      "poverty_concentrated_adj": "round(s.poverty_concentrated*p.frpl_concentration, p.digits)",
+      "ell": "round(d.ell_students*p.ell, p.digits)",
+      "frpl": "round(d.frpl_students*p.need, p.digits)",
+      "need": "d.resident_students+s.poverty+s.high_poverty+s.ell",
+      "engl_pc": "round(d.engl_3yr_avg/d.total_population, p.digits)",
+      "engl_agg": "round(median(s.engl_pc)*p.engl_mhi, p.digits)",
+      "engl_adjustment": "round(s.engl_pc/s.engl_agg, p.adjustment_digits)",
+      "mhi_agg": "round(median(d.median_household_income)*p.engl_mhi, p.digits)",
+      "mhi_adjustment": "round(d.median_household_income/s.mhi_agg, p.adjustment_digits)",
+      "wealth_adjustment": "round(1-((s.engl_adjustment*p.engl)+(s.mhi_adjustment*p.mhi)), p.adjustment_digits)",
+      "base_aid_ratio": "limit(s.wealth_adjustment, !d.psd_flag & !d.alliance_district_flag ? p.non_alliance_min : p.alliance_min)",
+      "base_aid_ratio_final": "s.base_aid_ratio+p.pic",
+      "regional_bonus": "round(d.students_sent_to_regional_district*d.n_regional_district_grades*p.regional_bonus, p.dollar_digits)",
+      "endowed_bonus": "round(d.students_sent_to_endowed_academies*d.n_endowed_academy_grades*p.endowed_bonus, p.dollar_digits)",
+      "base_aid": "round(s.need*s.base_aid_ratio_final*p.foundation, p.dollar_digits)",
+      "full_grant": "s.regional_bonus+s.endowed_bonus+s.base_aid",
+      "full_grant_harm_held": "!d.alliance_district_flag ? s.full_grant : row_max(d.actual_fy2017, s.entitlement_prior, s.full_grant)",
+      "grant_adjustment": "limit(s.full_grant-s.entitlement_prior, 0)",
+      "more_than_last": "s.full_grant > s.entitlement_prior",
+      "funding_adjustment": "round(s.grant_adjustment*(s.more_than_last ? p.underfunded : p.overfunded), p.final_digits)",
+      "entitlement_no_alliance": "s.funding_adjustment+s.entitlement_prior",
+      "entitlement": "!d.alliance_district_flag ? s.entitlement_no_alliance : row_max(d.actual_fy2017, s.entitlement_prior, s.entitlement_no_alliance)",
+      "change": "s.entitlement-s.entitlement_prior"
+    }
+  },
+  "variable_parts": {
+    "ppe": {"label": "Per-Pupil Expenditure"},
+    "ppo": {"label": "Per-Pupil Expenditure by Object"},
+    "swd": {"label": "Students with Disabilities"},
+    "ela": {"label": "English Language Arts/Literacy"},
+    "ell": {"label": "English Language Learners"},
+    "sbac": {"label": "Smarter Balanced Assessment"},
+    "pic": {"label": "Property and Income"},
+    "psd": {"label": "Priority School District"},
+    "real": {"label": "Inflation-Adjusted (2025 $)"},
+    "sped": {"label": "Special Education"},
+    "arch": {"label": "Archived"},
+    "grad4": {"label": "Graduation 4-Year"},
+    "grad5": {"label": "Graduation 5-Year"},
+    "sat": {"label": "SAT"},
+    "rev": {"label": "Revenue"},
+    "acct": {"label": "Accountability"},
+    "ext": {"label": "Extended"},
+    "pct": {"label": "Percent"},
+    "prof": {"label": "proficiency"},
+    "sp": {"label": "Spending"},
+    "ecs": {"label": "Education Cost Savings"},
+    "tot": {"label": "Total"},
+    "frpl": {"label": "Free or Reduced-Price Lunch"},
+    "mhi": {"label": "Median Household Income"},
+    "drg": {"label": "District Reference Group"},
+    "engl": {"label": "Equalized Net Grand List"},
+    "avg": {"label": "Average"},
+    "exp": {"label": "Expenditures"},
+    "hh": {"label": "Harm Held"},
+    "gt": {"label": "Grant"}
+  }
+}

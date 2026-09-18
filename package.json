@@ -1,0 +1,39 @@
+{
+  "name": "dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "eslint",
+    "test": "cypress run",
+    "test:interactive": "cypress open"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.4.0",
+    "@mui/material": "^9.4.0",
+    "arquero": "^8.0.3",
+    "echarts": "^6.1.0",
+    "echarts-stat": "^1.2.0",
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@cypress/code-coverage": "^4.0.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-istanbul": "^8.0.0",
+    "cypress": "^16.1.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "typescript": "^5"
+  },
+  "allowScripts": {
+    "unrs-resolver@1.12.2": true,
+    "cypress@16.1.0": true
+  }
+}
