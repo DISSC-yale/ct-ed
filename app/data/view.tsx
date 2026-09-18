@@ -23,6 +23,7 @@ export type ViewDef = {
   min_time: string
   max_time: string
   profile: string
+  profile_section: string
 }
 
 export type ViewAction =
@@ -32,7 +33,7 @@ export type ViewAction =
   | {key: 'variable'; which: 'x' | 'y'; part: 'selection'; value: VariableInfo[]}
   | {key: 'variable'; which: 'x' | 'y'; part: 'deflate'; value: boolean}
   | {
-      key: 'lines' | 'color' | 'symbol' | 'x_panels' | 'y_panels' | 'select_time' | 'profile'
+      key: 'lines' | 'color' | 'symbol' | 'x_panels' | 'y_panels' | 'select_time' | 'profile' | 'profile_section'
       value: string
     }
   | {key: 'time_agg'; value: TimeAgg}
@@ -57,6 +58,7 @@ const defaultView: ViewDef = {
   min_time: '',
   max_time: '',
   profile: '',
+  profile_section: 'sp',
 }
 const defaultXY = {x: defaultView.x.toString(), y: defaultView.y.toString()}
 const binaryParams = {lock_range: true, entity_center: true}

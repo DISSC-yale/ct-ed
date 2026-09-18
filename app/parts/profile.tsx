@@ -151,52 +151,54 @@ export function ProfileDisplay() {
         .select(Object.keys(summaries))
         .objects()[0] as {[key: string]: number}
       if (!values) return
-      const sections: {[key: string]: {[key: string]: ReactElement}} = {}
+      const sections: {[key: string]: {id: string; label: string}} = {}
+      const section: {[key: string]: ReactElement} = {}
       Object.keys(summaries).forEach(id => {
         const v = variables[id]
-        if (!(v.labels.section in sections)) sections[v.labels.section] = {}
-        const section = sections[v.labels.section]
-        if (v.category) {
-          if (!(v.labels.category in section)) {
-            const category = categories[v.category_id]
-            section[v.category_id] = (
+        sections[v.section] = {id: v.section, label: v.labels.section}
+        if (view.profile_section === v.section) {
+          if (v.category) {
+            if (!(v.labels.category in section)) {
+              const category = categories[v.category_id]
+              section[v.category_id] = (
+                <Card key={v.id} sx={{p: 0}}>
+                  <CardHeader title={<Typography variant="h6">{v.labels.variable}</Typography>} />
+                  <CardContent sx={{p: 0, pb: '0px !important'}}>
+                    <Table size="small">
+                      <TableBody>
+                        {category.categories.map(cat => (
+                          <SummaryRow
+                            value={values[cat.id]}
+                            key={cat.id}
+                            label={cat.labels.category}
+                            summary={summaries[cat.id]}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )
+            }
+          } else {
+            section[v.id] = (
               <Card key={v.id} sx={{p: 0}}>
                 <CardHeader title={<Typography variant="h6">{v.labels.variable}</Typography>} />
                 <CardContent sx={{p: 0, pb: '0px !important'}}>
                   <Table size="small">
                     <TableBody>
-                      {category.categories.map(cat => (
-                        <SummaryRow
-                          value={values[cat.id]}
-                          key={cat.id}
-                          label={cat.labels.category}
-                          summary={summaries[cat.id]}
-                        />
-                      ))}
+                      <SummaryRow value={values[v.id]} summary={summaries[v.id]} />
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
             )
           }
-        } else {
-          section[v.id] = (
-            <Card key={v.id} sx={{p: 0}}>
-              <CardHeader title={<Typography variant="h6">{v.labels.variable}</Typography>} />
-              <CardContent sx={{p: 0, pb: '0px !important'}}>
-                <Table size="small">
-                  <TableBody>
-                    <SummaryRow value={values[v.id]} summary={summaries[v.id]} />
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )
         }
       })
-      return sections
+      return {sections, section}
     }
-  }, [summaries, view.profile])
+  }, [summaries, view.profile, view.profile_section])
   const setProfile = (entity: string) => viewAction({key: 'profile', value: entity})
   const clearProfile = () => setProfile('')
   return (
@@ -244,17 +246,25 @@ export function ProfileDisplay() {
               }
             ></TextField>
           </Stack>
-          <Stack spacing={1} sx={{mt: 1, height: 'calc(100% - 50px)', overflowY: 'auto'}}>
-            {summaryDisplay &&
-              Object.keys(summaryDisplay).map(section => (
-                <Box key={section}>
-                  <Typography variant="h5">{section}</Typography>
-                  <Stack spacing={1} sx={{p: 1}}>
-                    {Object.values(summaryDisplay[section])}
-                  </Stack>
-                </Box>
-              ))}
-          </Stack>
+          {summaryDisplay && (
+            <>
+              <Autocomplete
+                size="small"
+                fullWidth
+                options={Object.values(summaryDisplay.sections)}
+                value={summaryDisplay.sections[view.profile_section]}
+                onChange={(_, selection) => viewAction({key: 'profile_section', value: selection.id})}
+                disableClearable
+                renderInput={params => <TextField {...params} label="Variable Section" />}
+                sx={{pt: 2}}
+              />
+              <Stack spacing={1} sx={{mt: 1, height: 'calc(100% - 100px)', overflowY: 'auto'}}>
+                <Stack spacing={1} sx={{p: 1}}>
+                  {Object.values(summaryDisplay.section)}
+                </Stack>
+              </Stack>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
