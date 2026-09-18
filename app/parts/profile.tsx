@@ -241,7 +241,7 @@ export function ProfileDisplay() {
               onChange={e =>
                 viewAction({
                   key: 'select_time',
-                  value: '' + Math.max(info.time_range.min, Math.min(info.time_range.max, +e.target.value)),
+                  value: e.target.value,
                 })
               }
             ></TextField>

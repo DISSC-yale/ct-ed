@@ -40,7 +40,7 @@ export default function VariableControls({
           </Typography>
         }
       />
-      <CardContent sx={{p: 1}}>
+      <CardContent sx={{p: 1, pb: '8px !important'}}>
         <Stack spacing={1}>
           <Autocomplete
             options={allVariables}
