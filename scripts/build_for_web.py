@@ -117,7 +117,7 @@ if __name__ == "__main__":
                         )
                     ).to_list()
                     for col in data.columns
-                    if "_real" not in col
+                    if "_real" not in col and not data[col].isna().all()
                 },
                 separators=(",", ":"),
             )

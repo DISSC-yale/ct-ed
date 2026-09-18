@@ -1,4 +1,4 @@
-import {type ColumnTable} from 'arquero'
+import type {ColumnTable} from 'arquero'
 import {unique} from '../utils'
 
 export type FormulaParam = {label: string; category: string; note?: string; used_by: string[]} & (
@@ -190,7 +190,14 @@ export class Formula {
         //   this.appendStep(child, time, state)
         // })
       })
-      state.data = data = data.filter(`d.${this.refs.time} !== ${times[i]}`).concat(state.data)
+      Object.keys(calculatedCols).forEach(col => {
+        const d = data.column(col) as number[]
+        const s = state.data.column(col) as number[]
+        state.data.scan(i => {
+          d[i as number] = s[i as number]
+        })
+      })
+      state.data = data
       state.updated = {}
     }
     return state.data
