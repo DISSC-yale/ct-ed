@@ -26,7 +26,7 @@ export type ViewDef = {
 }
 
 export type ViewAction =
-  | {key: 'reset'}
+  | {key: 'reset' | 'flip_panels'}
   | {key: 'replace'; view: ViewDef}
   | {key: 'x' | 'y'; value: Variable}
   | {key: 'variable'; which: 'x' | 'y'; part: 'selection'; value: VariableInfo[]}
@@ -135,32 +135,31 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     return params
   }, [!!info.time_range])
   const editView = (state: ViewDef, action: ViewAction) => {
-    if (action.key === 'reset') {
-      state.entities_select = {...selectEntities}
-      state.time_agg = 'all'
-      state.max_time = '' + info.time_range.max
-      state.min_time = '' + info.time_range.min
-      updateUrlParams({...urlParams, ...state})
-      return {...state}
-    }
     if (action.key === 'replace') {
       updateUrlParams({...urlParams, ...action.view})
       return {...action.view}
+    }
+    const newState = {...state}
+    if (action.key === 'reset') {
+      newState.entities_select = {...selectEntities}
+      newState.time_agg = 'all'
+      newState.max_time = '' + info.time_range.max
+      newState.min_time = '' + info.time_range.min
     } else if (action.key === 'entities') {
-      state.entities = Object.keys(action.value).length < 10 ? Object.keys(action.value).join(',') : ''
-      state.entities_select = {...action.value}
-      updateUrlParams({...urlParams, ...state})
-      return {...state}
+      newState.entities = Object.keys(action.value).length < 10 ? Object.keys(action.value).join(',') : ''
+      newState.entities_select = {...action.value}
     } else if (action.key === 'variable') {
       if (action.part === 'selection') {
-        state[action.which].setSelection(action.value)
+        newState[action.which].setSelection(action.value)
       } else if (action.part === 'deflate') {
-        state[action.which].deflate = action.value
+        newState[action.which].deflate = action.value
       }
-      updateUrlParams({...urlParams, ...state})
-      return {...state}
+    } else if (action.key === 'flip_panels') {
+      newState.x_panels = state.y_panels
+      newState.y_panels = state.x_panels
+    } else if ('value' in action) {
+      newState[action.key as 'color'] = action.value as string
     }
-    const newState = {...state, [action.key]: action.value}
     updateUrlParams({...urlParams, ...newState})
     return newState
   }

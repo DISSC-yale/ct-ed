@@ -62,6 +62,9 @@ export function makeSeries(
   const baseData = selectData
   xPanelLevels.forEach((x, xi) => {
     yPanelLevels.forEach((y, yi) => {
+      const label =
+        (x !== '' ? view.x_panels + ': ' + (x || 0) + (y ? ', ' : '') : '') +
+        (y !== '' ? view.y_panels + ': ' + (y || 0) : '')
       let d = baseData
       if (panelX) d = d.filter(`d.${panelX} == '${x}'`)
       if (panelY) d = d.filter(`d.${panelY} == '${y}'`)
@@ -86,6 +89,7 @@ export function makeSeries(
       const dataArray: number[][] = []
       d.partitions().forEach(inds => {
         const series = {...baseSeries, xAxisIndex: index, yAxisIndex: index} as LineSeriesOption
+        series.name = label
         series.id = x + y + inds.join(',')
         if (refs.lines) {
           const lineLevel = d.get(refs.lines, inds[0])
@@ -123,7 +127,7 @@ export function makeSeries(
         }
       })
       panels.push({
-        label: '',
+        label,
         top: 0,
         height: 0,
         left: 0,

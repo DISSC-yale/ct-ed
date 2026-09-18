@@ -20,15 +20,25 @@ import {FlipCameraAndroid} from '@mui/icons-material'
 import VariableControls from '../data/variable_controls'
 import {SingleSelect} from './selector_single'
 
+function sectionOrder(section: string) {
+  return (
+    section === 'ecs' ? 0
+    : section === 'computed' ? 1
+    : 2
+  )
+}
+
 export function DataMenu() {
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const full = useContext(DataContext) as Resources
   const allVariables = useMemo(() => {
-    return Object.values(full.categories).map(cat => {
-      cat.searchString = JSON.stringify(cat)
-      return cat
-    })
+    return Object.values(full.categories)
+      .map(cat => {
+        cat.searchString = JSON.stringify(cat)
+        return cat
+      })
+      .sort((a, b) => sectionOrder(a.section) - sectionOrder(b.section))
   }, [!!full.categories])
   const lineOptions = useMemo(() => {
     return [
@@ -79,6 +89,45 @@ export function DataMenu() {
               update={(value: VariableInfo) => viewAction({key: 'lines', value: value.id})}
               clearable={true}
             />
+            <Typography>Panels</Typography>
+            <Stack direction="row" sx={{alignItems: 'center'}}>
+              <Stack spacing={1} sx={{width: 'calc(100% - 40px)'}}>
+                <SingleSelect
+                  label="Y Levels"
+                  options={lineOptions}
+                  selection={
+                    lineOptions.find(({id}) => id === view.y_panels) ||
+                    ({
+                      id: '',
+                      labels: {category: ''},
+                    } as unknown as VariableInfo)
+                  }
+                  update={(value: VariableInfo) => viewAction({key: 'y_panels', value: value.id})}
+                  clearable={true}
+                />
+                <SingleSelect
+                  label="X Levels"
+                  options={lineOptions}
+                  selection={
+                    lineOptions.find(({id}) => id === view.x_panels) ||
+                    ({
+                      id: '',
+                      labels: {category: ''},
+                    } as unknown as VariableInfo)
+                  }
+                  update={(value: VariableInfo) => viewAction({key: 'x_panels', value: value.id})}
+                  clearable={true}
+                />
+              </Stack>
+              <IconButton
+                aria-label="flip panel axes"
+                onClick={() => {
+                  viewAction({key: 'flip_panels'})
+                }}
+              >
+                <FlipCameraAndroid />
+              </IconButton>
+            </Stack>
             <Typography variant="h6">Filters</Typography>
             <FilterEntities />
             <FormControl size="small" fullWidth>

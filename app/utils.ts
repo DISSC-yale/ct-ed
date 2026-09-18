@@ -14,7 +14,7 @@ export function formatNumber(x: number, info?: Variable): string | number | unde
 }
 
 export function unique(d: ColumnTable, variable: string) {
-  return [...new Set(d.array(variable))].sort()
+  return [...new Set(d.array(variable))].filter(x => x != null).sort()
 }
 
 export function tooltipPlacer(pos: number[], params: LineSeriesOption, dom: HTMLElement) {

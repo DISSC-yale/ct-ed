@@ -245,6 +245,7 @@ export default function Plot({
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
           panelContainer.current = panels
           const {title, grid} = resizePanels(frame, panels)
+          const showLegend = view.lines && series.length < 20
           chart.setOption(
             {
               darkMode,
@@ -254,7 +255,7 @@ export default function Plot({
                 right: 'right',
                 orient: 'vertical',
                 type: 'scroll',
-                data: view.lines ? [...new Set(series.map(s => s.name).sort())] : [],
+                data: showLegend ? [...new Set(series.map(s => s.name).sort())] : [],
               },
               backgroundColor: colors.bg,
               tooltip: {
@@ -271,7 +272,7 @@ export default function Plot({
                 appendToBody: true,
               },
               visualMap:
-                view.lines ? null : (
+                showLegend ? null : (
                   {
                     calculable: true,
                     max: range.y[1],
