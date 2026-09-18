@@ -6,6 +6,7 @@ import pandas
 if __name__ == "__main__":
     data = pandas.read_csv("data/ct_ed_merged_ecs.csv.gz")
     ecs = pandas.read_csv("data/ecs_shells_merged.csv.gz")
+    ecs["town_code"] = ecs["town_code"].astype(int).astype(str) + "0011"
     data = data.loc[
         ~data["district_code"].isna() & (data["fiscal_year"] > 2017),
         [
@@ -14,6 +15,7 @@ if __name__ == "__main__":
             if not col.startswith("ecs__") and not col.startswith("ppe_ext__")
         ],
     ]
+    data["district_code"] = data["district_code"].astype(int).astype(str)
 
     # merge in ecs
     names = data["district_name"].str.replace(
@@ -31,7 +33,7 @@ if __name__ == "__main__":
         ),
         how="outer",
         on=["fiscal_year", "district_name"],
-    )
+    ).sort_values(["fiscal_year", "district_name"])
     data.loc[data["district_code"].isna(), "district_code"] = data.loc[
         data["district_code"].isna(), "town_code"
     ]

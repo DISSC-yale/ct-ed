@@ -147,7 +147,7 @@ export function ProfileDisplay() {
   const summaryDisplay = useMemo(() => {
     if (view.profile) {
       const values = data
-        .filter(`d.${info.refs.entity} === ${view.profile} & d.${info.refs.time} === ${time}`)
+        .filter(`d.${info.refs.entity} === '${view.profile}' & d.${info.refs.time} === ${time}`)
         .select(Object.keys(summaries))
         .objects()[0] as {[key: string]: number}
       if (!values) return
