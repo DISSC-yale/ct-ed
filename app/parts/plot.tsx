@@ -201,7 +201,7 @@ export default function Plot({
         '</strong></td></tr></table></div>'
       )
     },
-    [view, meta.entities],
+    [view, meta.entities, varIndices],
   )
   useEffect(() => {
     if (container.current) {
