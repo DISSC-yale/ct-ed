@@ -42,7 +42,7 @@ export type ViewAction =
   | {key: 'entities'; value: {[index: string]: boolean}}
 
 const defaultView: ViewDef = {
-  lock_range: true,
+  lock_range: false,
   x: new Variable('general__fiscal_year'),
   y: new Variable('computed__entitlement'),
   lines: 'general__district_code',
@@ -88,6 +88,7 @@ const updateUrlParams = (view: ViewDef) => {
 
 export const ViewActionContext = createContext<ActionDispatch<[action: ViewAction]>>(() => {})
 export const ViewContext = createContext<ViewDef | null>(null)
+export const FullDataContext = createContext(new ColumnTable({}))
 export const SelectedContext = createContext(new ColumnTable({}))
 
 export const splitComponents = ['x_panels', 'y_panels', 'symbol', 'color']
@@ -198,7 +199,9 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     return {...state}
   }
   const [formulaParams, formulaAction] = useReducer(editParams, formula.values)
-  useEffect(() => setCalculated(formula.run([], calculated, formulaParams)), [formulaParams])
+  useEffect(() => {
+    setCalculated(calculated => formula.run([], calculated, formulaParams))
+  }, [formula, formulaParams])
 
   const selected = useMemo(() => {
     const entity_id = info.refs.entity
@@ -214,14 +217,26 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     return view.time_agg in timeSelectors ?
         filtered.groupby(entity_id).filter(`d.${time_id} === ${timeSelectors[view.time_agg as 'first']}(d.${time_id})`)
       : filtered
-  }, [calculated, view.entities_select, view.time_agg, view.select_time, info.time_range, view.min_time, view.max_time])
+  }, [
+    calculated,
+    view.entities_select,
+    view.time_agg,
+    view.select_time,
+    info.time_range,
+    view.min_time,
+    view.max_time,
+    info.refs.entity,
+    info.refs.time,
+  ])
 
   return (
     <ViewActionContext.Provider value={viewAction}>
       <ViewContext.Provider value={view}>
         <FormulaEditor.Provider value={formulaAction}>
           <FormulaContext.Provider value={formulaParams}>
-            <SelectedContext.Provider value={selected}>{children}</SelectedContext.Provider>
+            <FullDataContext.Provider value={calculated}>
+              <SelectedContext.Provider value={selected}>{children}</SelectedContext.Provider>
+            </FullDataContext.Provider>
           </FormulaContext.Provider>
         </FormulaEditor.Provider>
       </ViewContext.Provider>

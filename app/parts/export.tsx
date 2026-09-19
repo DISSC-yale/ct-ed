@@ -15,9 +15,9 @@ import {
   Typography,
 } from '@mui/material'
 import {ColumnTable} from 'arquero'
-import {useContext, useMemo, useState} from 'react'
+import {useContext, useEffect, useMemo, useState} from 'react'
 import {DataContext, Resources} from '../data/load'
-import {SelectedContext, ViewContext, ViewDef} from '../data/view'
+import {FullDataContext, SelectedContext, ViewContext, ViewDef} from '../data/view'
 
 function makePartialName(filtered: ColumnTable, view: ViewDef, version: string) {
   return `ct_ed_${version}${
@@ -25,29 +25,31 @@ function makePartialName(filtered: ColumnTable, view: ViewDef, version: string) 
   }_${filtered.numRows()}`
 }
 export function Export() {
-  const full = useContext(DataContext) as Resources
+  const {meta} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
+  const fullData = useContext(FullDataContext)
   const selected = useContext(SelectedContext)
 
   const [open, setOpen] = useState(false)
   const [fullExport, setFullExport] = useState(false)
-  const data = useMemo(() => (fullExport ? full.data : selected), [fullExport, full.data, selected])
+  const data = useMemo(() => (fullExport ? fullData : selected), [fullExport, fullData, selected])
   const allColumns = useMemo(() => data.columnNames(), [data])
   const [columns, setColumns] = useState(allColumns)
   const [filename, setFilename] = useState('')
-  const defaultNames = useMemo(() => {
-    const partial = makePartialName(selected, view, full.meta.updated)
-    setFilename(partial)
+  useEffect(() => {
+    setFilename(makePartialName(data, view, meta.updated))
     setColumns(allColumns.filter(col => (view.time_agg === 'mean' ? col !== 'year' : true)))
+  }, [allColumns, data, view, meta.updated])
+  const defaultNames = useMemo(() => {
     return {
-      partial,
-      full: `wid_ggg_${full.meta.updated}${
+      partial: makePartialName(data, view, meta.updated),
+      full: `st_ed_${meta.updated}${
         view.time_agg === 'all' ?
           ''
         : '_' + (view.time_agg === 'specified' ? view.select_time : view.time_agg + '-time')
       }`,
     }
-  }, [selected, view, allColumns, full.meta.updated])
+  }, [data, view, meta.updated])
   const close = () => setOpen(!open)
   return (
     <>
@@ -110,7 +112,7 @@ export function Export() {
                     checked={fullExport}
                     onChange={() => {
                       if (filename === defaultNames[fullExport ? 'full' : 'partial']) {
-                        defaultNames.partial = makePartialName(selected, view, full.meta.updated)
+                        defaultNames.partial = makePartialName(data, view, meta.updated)
                         setFilename(defaultNames[fullExport ? 'partial' : 'full'])
                       }
                       setFullExport(!fullExport)

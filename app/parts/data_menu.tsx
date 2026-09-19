@@ -4,11 +4,13 @@ import {
   CardActions,
   CardContent,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -51,7 +53,7 @@ export function DataMenu() {
         labels: {category: level in full.variables ? full.variables[level].labels.full : level},
       } as unknown as VariableInfo
     })
-  }, [full.variable_types])
+  }, [full.variable_types, full.variables, full.info.refs.entity])
   return (
     <>
       <CardContent sx={{overflow: 'hidden', height: 'calc(100% - 60px)', pt: 0, pb: 0}}>
@@ -118,6 +120,20 @@ export function DataMenu() {
                   update={(value: VariableInfo) => viewAction({key: 'x_panels', value: value.id})}
                   clearable={true}
                 />
+                {view.x_panels ||
+                  (view.y_panels && (
+                    <FormControlLabel
+                      label="Common Axis Ranges"
+                      labelPlacement="start"
+                      control={
+                        <Switch
+                          size="small"
+                          checked={view.lock_range}
+                          onChange={() => viewAction({key: 'lock_range', value: !view.lock_range})}
+                        />
+                      }
+                    />
+                  ))}
               </Stack>
               <IconButton
                 aria-label="flip panel axes"

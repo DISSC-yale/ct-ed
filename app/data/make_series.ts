@@ -28,8 +28,6 @@ export function makeSeries(
   const {panelX, panelY, color, symbol, lines, time, entity} = refs
   const xPanelLevels = panelX ? unique(selectData, panelX) : ['']
   const yPanelLevels = panelY ? unique(selectData, panelY) : ['']
-  const nXLevels = xPanelLevels.length
-  const nYLevels = yPanelLevels.length
   const data: LineSeriesOption[] = []
   const panels: Panel[] = []
   const symbolMap: {[index: string]: {symbol: string; opacity: number}} = {}
@@ -51,7 +49,7 @@ export function makeSeries(
   const range = {
     x: [Infinity, -Infinity, -Infinity],
     y: [Infinity, -Infinity, -Infinity],
-    panel: [nXLevels, yPanelLevels.length],
+    panel: [1, 1],
   }
   const assignColors = lines && lines !== entity
   const colorMap = assignColors ? indexMap(selectData, lines) : {}
@@ -71,13 +69,12 @@ export function makeSeries(
     })
   }
 
-  const baseData = selectData
   xPanelLevels.forEach((x, xi) => {
     yPanelLevels.forEach((y, yi) => {
       const label =
         (x !== '' ? view.x_panels + ': ' + (x || 0) + (y ? ', ' : '') : '') +
         (y !== '' ? view.y_panels + ': ' + (y || 0) : '')
-      let d = baseData
+      let d = selectData
       if (panelX) d = d.filter(`d.${panelX} == '${x}'`)
       if (panelY) d = d.filter(`d.${panelY} == '${y}'`)
       d = view.y.addTo(d, 'y')
@@ -85,7 +82,7 @@ export function makeSeries(
       d = d.filter(`d.x != null & d.y != null`)
       if (aggLines) d = d.filter(`d.${lines} !== null`)
       if (!d.numRows()) return
-      const nEntities = unique(d, entity).length
+      const panelEntities = unique(d, entity)
       index++
       if (aggLines) {
         d = d.groupby(lines, time).rollup({x: 'mean(d.x)', y: 'mean(d.y)'}).groupby(lines).select('x', 'y', time, lines)
@@ -148,10 +145,10 @@ export function makeSeries(
         left: 0,
         width: 0,
         yIndex: yi,
-        nYLevels,
+        nXLevels: 1,
         xIndex: xi,
-        nXLevels,
-        nEntities,
+        nYLevels: 1,
+        panelEntities,
       })
       const y_range = d.ungroup().rollup({value: '[min(d.y), quantile(d.y, .97), max(d.y)]'}).array('value')[0]
       range.y[0] = Math.min(range.y[0], y_range[0])
@@ -163,5 +160,20 @@ export function makeSeries(
       range.x[2] = Math.max(range.x[2], x_range[2])
     })
   })
-  return {series: data, panels, range, varIndices} as PlotInput
+  const indices: {x: Set<number>; y: Set<number>} = {x: new Set(), y: new Set()}
+  panels.forEach(p => {
+    indices.x.add(p.xIndex)
+    indices.y.add(p.yIndex)
+  })
+  range.panel = [indices.x.size, indices.y.size]
+  return {
+    series: data,
+    panels: panels.map(p => {
+      p.nXLevels = range.panel[0]
+      p.nYLevels = range.panel[1]
+      return p
+    }),
+    range,
+    varIndices,
+  } as PlotInput
 }

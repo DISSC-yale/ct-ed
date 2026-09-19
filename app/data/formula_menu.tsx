@@ -38,7 +38,7 @@ export default function FormulaMenu() {
       }
     })
     return categories
-  }, [formulaParams, editFormula])
+  }, [formulaParams, editFormula, params])
   const colStyle = {overflow: 'auto', pt: 1, minWidth: 150}
   return (
     <Stack spacing={2} direction="row" sx={{height: '100%', justifyContent: {lg: 'center'}}}>

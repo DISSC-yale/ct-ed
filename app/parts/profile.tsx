@@ -21,16 +21,27 @@ import {
 import {useContext, useMemo, type ReactElement} from 'react'
 import {DataContext, type Resources} from '../data/load'
 import {entityOptions, filterOptions, type EntityOption} from './filter_entities'
-import {ViewActionContext, ViewContext, type ViewDef} from '../data/view'
-import {formatNumber} from '../utils'
+import {FullDataContext, ViewActionContext, ViewContext, type ViewDef} from '../data/view'
+import {formatValue} from '../utils'
 
 function numberSummary(v: string) {
   return `[min(d.${v}), quantile(d.${v}, .25), median(d.${v}), mean(d.${v}), quantile(d.${v}, .75), max(d.${v})]`
 }
 function SummaryBar({value, summary}: {value: number; summary: number[]}) {
+  const absMin = Math.abs(summary[0])
+  const s = summary.map(v => v + absMin)
+  const min = s[0]
+  const denom = s[5] - min
   return (
     <Stack
-      sx={{position: 'relative', width: '100%', height: 35, justifyContent: 'space-between', alignItems: 'center'}}
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: 35,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        '& .MuiBox-root': {transition: 'right 700ms, left 700ms', transitionDelay: '100ms'},
+      }}
       spacing={1}
       direction="row"
     >
@@ -41,16 +52,16 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
           textAlign: 'right',
         }}
       >
-        {formatNumber(summary[0])}
+        {formatValue(summary[0])}
       </Box>
-      <Box sx={{backgroundColor: '#949494', height: 10, position: 'relative', width: '100%'}}>
+      <Box sx={{backgroundColor: '#858585', height: 10, position: 'relative', width: '100%'}}>
         <Box
           sx={{
             position: 'absolute',
-            backgroundColor: '#286dc0',
+            backgroundColor: '#2f65a7',
             height: 10,
-            left: ((summary[1] - summary[0]) / (summary[5] - summary[0])) * 100 + '%',
-            right: ((summary[4] - summary[0]) / (summary[5] - summary[0])) * 100 + '%',
+            left: ((s[1] - min) / denom) * 100 + '%',
+            right: (1 - (s[4] - min) / denom) * 100 + '%',
           }}
         ></Box>
         <Box
@@ -58,8 +69,8 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             position: 'absolute',
             height: 10,
             width: 2,
-            backgroundColor: '#b3b3b3',
-            left: ((summary[3] - summary[0]) / (summary[5] - summary[0])) * 100 + '%',
+            backgroundColor: '#ececec',
+            left: ((s[3] - min) / denom) * 100 + '%',
           }}
         ></Box>
         <Box
@@ -68,27 +79,27 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             top: 0,
             height: 30,
             width: 2,
-            backgroundColor: '#696969',
+            backgroundColor: '#b6b6b6',
             lineHeight: 2.8,
             opacity: 0.8,
             textIndent: 5,
-            left: ((summary[2] - summary[0]) / (summary[5] - summary[0])) * 100 + '%',
+            left: summary[2] == null ? '50%' : ((s[2] - min) / denom) * 100 + '%',
           }}
         >
-          {formatNumber(summary[2])}
+          {formatValue(summary[2])}
         </Box>
         <Box
           sx={{
             position: 'absolute',
             height: 30,
             width: 2,
-            backgroundColor: '#ac4141',
+            backgroundColor: '#b13030',
             top: '-19px',
             textIndent: 5,
-            left: value === null ? '50%' : ((value - summary[0]) / (summary[5] - summary[0])) * 100 + '%',
+            left: value == null ? '50%' : ((value + absMin - min) / denom) * 100 + '%',
           }}
         >
-          {formatNumber(value)}
+          {formatValue(value)}
         </Box>
       </Box>
       <Box
@@ -97,7 +108,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
           width: 100,
         }}
       >
-        {formatNumber(summary[5])}
+        {formatValue(summary[5])}
       </Box>
     </Stack>
   )
@@ -120,7 +131,8 @@ function SummaryRow({label, value, summary}: {label?: string; value: number; sum
 }
 
 export function ProfileDisplay() {
-  const {info, meta, data, variable_types, variables, categories} = useContext(DataContext) as Resources
+  const {info, meta, variable_types, variables, categories} = useContext(DataContext) as Resources
+  const data = useContext(FullDataContext)
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const time = view.select_time || '' + 2025
@@ -143,7 +155,7 @@ export function ProfileDisplay() {
       [key: string]: number[]
     }
     return summaries
-  }, [data, time])
+  }, [variable_types, data, time, info.refs.time])
   const summaryDisplay = useMemo(() => {
     if (view.profile) {
       const values = data
@@ -153,10 +165,10 @@ export function ProfileDisplay() {
       if (!values) return
       const sections: {[key: string]: {id: string; label: string}} = {}
       const section: {[key: string]: ReactElement} = {}
-      Object.keys(summaries).forEach(id => {
+      Object.keys(values).forEach(id => {
         const v = variables[id]
         sections[v.section] = {id: v.section, label: v.labels.section}
-        if (view.profile_section === v.section) {
+        if (v.section === view.profile_section) {
           if (v.category) {
             if (!(v.labels.category in section)) {
               const category = categories[v.category_id]
@@ -198,7 +210,17 @@ export function ProfileDisplay() {
       })
       return {sections, section}
     }
-  }, [summaries, view.profile, view.profile_section])
+  }, [
+    variables,
+    summaries,
+    view.profile,
+    view.profile_section,
+    categories,
+    data,
+    info.refs.entity,
+    info.refs.time,
+    time,
+  ])
   const setProfile = (entity: string) => viewAction({key: 'profile', value: entity})
   const clearProfile = () => setProfile('')
   return (
@@ -206,8 +228,14 @@ export function ProfileDisplay() {
       <Button variant="text" color="inherit" onClick={() => setProfile(allEntities[0].key)}>
         Profile
       </Button>
-      <Dialog open={!!view.profile} onClose={clearProfile} fullScreen>
-        <DialogTitle>District Profile</DialogTitle>
+      <Dialog
+        open={!!view.profile}
+        onClose={clearProfile}
+        fullWidth
+        maxWidth="lg"
+        sx={{'& .MuiDialog-container': {alignItems: 'flex-start'}}}
+      >
+        <DialogTitle sx={{p: 1}}>District Profile</DialogTitle>
         <IconButton
           aria-label="close import menu"
           onClick={clearProfile}
@@ -220,7 +248,7 @@ export function ProfileDisplay() {
         >
           <Close />
         </IconButton>
-        <DialogContent sx={{p: 1, overflow: 'hidden'}}>
+        <DialogContent sx={{p: 1, overflow: 'hidden', display: 'grid'}}>
           <Stack spacing={1} direction="row">
             <Autocomplete
               size="small"
@@ -246,7 +274,7 @@ export function ProfileDisplay() {
               }
             ></TextField>
           </Stack>
-          {summaryDisplay && (
+          {summaryDisplay ?
             <>
               <Autocomplete
                 size="small"
@@ -256,15 +284,16 @@ export function ProfileDisplay() {
                 onChange={(_, selection) => viewAction({key: 'profile_section', value: selection.id})}
                 disableClearable
                 renderInput={params => <TextField {...params} label="Variable Section" />}
-                sx={{pt: 2}}
+                sx={{pt: 3}}
               />
-              <Stack spacing={1} sx={{mt: 1, height: 'calc(100% - 100px)', overflowY: 'auto'}}>
-                <Stack spacing={1} sx={{p: 1}}>
-                  {Object.values(summaryDisplay.section)}
-                </Stack>
+              <Stack spacing={1} sx={{overflowY: 'auto'}}>
+                <Stack spacing={1}>{Object.values(summaryDisplay.section)}</Stack>
               </Stack>
             </>
-          )}
+          : <Box sx={{p: 5, textAlign: 'center'}}>
+              <Typography>No data available.</Typography>
+            </Box>
+          }
         </DialogContent>
       </Dialog>
     </>

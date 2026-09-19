@@ -3,9 +3,14 @@ import type {LineSeriesOption} from 'echarts'
 import type {Variable} from './data/variable'
 
 const formatter = Intl.NumberFormat().format
-export function formatNumber(x: number, info?: Variable): string | number | undefined {
-  if ('number' !== typeof x) return 'NA'
-  if (info && info.id.includes('year')) return x
+export function formatValue(x: number, info?: Variable): string | number | undefined {
+  if (
+    ('number' !== typeof x && x != null) ||
+    (info && info.category.firstInstance && info.category.firstInstance.type === 'time')
+  ) {
+    return x
+  }
+  if (x == null) return 'NA'
   return (
     x % 1 === 0 ? formatter(x)
     : Math.abs(x) > 1e3 ? formatter(+(x + Number.EPSILON).toFixed(2))

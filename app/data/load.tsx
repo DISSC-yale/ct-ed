@@ -2,7 +2,7 @@
 
 import {ColumnTable, loadJSON} from 'arquero'
 import {createContext, useEffect, useState} from 'react'
-import {Backdrop, LinearProgress, Stack, Typography} from '@mui/material'
+import {Backdrop, Stack, Typography} from '@mui/material'
 import {initCustomFunctions, type Categories} from './variable'
 import {Formula, type FormulaSpec} from './formula'
 import {deflatorTable} from '../utils'
@@ -45,7 +45,7 @@ export type VariableInfo = {
 export const DataContext = createContext<Resources | null>(null)
 
 const dollarVars =
-  /^(?:sp__|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|engl|median|endo|region|full|entitlement|change|base_formula|phase)|computed__(?:actual|median|base|endo|region|grant|full|funding|entitlement|change))/
+  /^(?:sp__|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|engl|median|endo|region|full|entitlement|prior|change|base_formula|phase)|computed__(?:actual|median|base|endo|region|grant|full|funding|entitlement|change))/
 const firstLetters = /\b(\w)/g
 function translatePart(p: string, parts: {[key: string]: {label: string}}) {
   return p
@@ -158,7 +158,6 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
     <Backdrop open={true}>
       <Stack sx={{margin: 'auto', marginTop: 10, maxWidth: 350}}>
         <Typography variant="h5">Loading Data...</Typography>
-        <LinearProgress />
       </Stack>
     </Backdrop>
   )

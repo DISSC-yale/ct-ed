@@ -14,19 +14,19 @@ import {
 import {useCallback, useContext, useEffect, useRef} from 'react'
 import {CanvasRenderer} from 'echarts/renderers'
 import {Box, useColorScheme} from '@mui/material'
-import {formatNumber, tooltipPlacer} from '../utils'
+import {formatValue, tooltipPlacer} from '../utils'
 import type {Variable} from '../data/variable'
 import {ViewActionContext, ViewDef} from '../data/view'
 import {DataContext, type Resources} from '../data/load'
 
 function axisMin({min}: {min: number}, adj = 1) {
   return +(
-    min < 0 || min - adj > 0 ? min - adj
-    : min > 0.1 ? min
+    min < 0 || min - adj > 0 ? min - adj + Number.EPSILON
+    : min > 0.1 ? min + Number.EPSILON
     : 0).toFixed(2)
 }
 function axisMax({max}: {max: number}, adj = 1) {
-  return +(max + adj).toFixed(2)
+  return +(max + adj + Number.EPSILON).toFixed(2)
 }
 function assignRanges(range: number[], options: AxisOptions, lock: boolean) {
   const adj = range[0] > 1900 ? 0 : Math.max(0.01, Math.abs(range[0] - range[1]) * 0.02)
@@ -43,18 +43,18 @@ type AxisOptions = {
   max?: number | (({max}: {max: number}) => number)
   axisLabel?: {formatter: (x: number) => string}
 }
-function formatNumberAxis(x: number, variable: Variable) {
-  if (variable.id.includes('year')) return '' + x
+function formatValueAxis(x: number, variable: Variable) {
+  if (variable.category.firstInstance && variable.category.firstInstance.type === 'time') return '' + x
   const x_abs = Math.abs(x)
   const ndec = x_abs < 1 ? 3 : 2
   return (
     x_abs > 1e3 ?
       x_abs > 2e9 ? x.toExponential(1)
-      : x_abs > 1e9 ? (x / 1e9).toFixed(ndec) + 'B'
-      : x_abs < 1e6 ? (x / 1e3).toFixed(ndec) + 'K'
-      : (x / 1e6).toFixed(ndec) + 'M'
+      : x_abs > 1e9 ? (x / 1e9 + Number.EPSILON).toFixed(ndec) + 'B'
+      : x_abs < 1e6 ? (x / 1e3 + Number.EPSILON).toFixed(ndec) + 'K'
+      : (x / 1e6 + Number.EPSILON).toFixed(ndec) + 'M'
     : x_abs % 1 === 0 ? '' + x
-    : x.toFixed(ndec)
+    : (x + Number.EPSILON).toFixed(ndec)
   )
 }
 const baseYAxisOptions: AxisOptions = {
@@ -73,7 +73,7 @@ export type Panel = {
   nYLevels: number
   xIndex: number
   nXLevels: number
-  nEntities: number
+  panelEntities: string[]
 }
 export type PlotInput = {
   series: LineSeriesOption[]
@@ -100,7 +100,7 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
   const panelHeight = frameHeight / grid[0].nYLevels
   const frameWidth = frame.width - (panelSpacing.left + panelSpacing.legendWidth + panelSpacing.gapX * grid[0].nXLevels)
   const panelWidth = frameWidth / grid[0].nXLevels
-  const title: {label: string; left: number; top: number; nEntities: number}[] = []
+  const title: {label: string; left: number; top: number; panelEntities: string[]}[] = []
   grid.forEach(g => {
     g.left = g.xIndex ? panelWidth * g.xIndex + panelSpacing.gapX * (g.xIndex + 1) + 20 : panelSpacing.left
     g.top = g.yIndex ? panelHeight * g.yIndex + panelSpacing.gapY * (g.yIndex + 1) - 35 : topGap
@@ -110,7 +110,7 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
       label: g.label,
       left: g.left - panelSpacing.textGapX,
       top: g.top - panelSpacing.textGapY,
-      nEntities: g.nEntities,
+      panelEntities: g.panelEntities,
     })
   })
   return {title, grid}
@@ -141,7 +141,7 @@ export default function Plot({
   }, [])
   const {mode} = useColorScheme()
   const viewAction = useContext(ViewActionContext)
-  const {info, meta} = useContext(DataContext) as Resources
+  const {info, meta, variables} = useContext(DataContext) as Resources
   const useMode = modeOverride || mode
   const {series, panels, range, varIndices} = input
   Object.keys(varIndices).forEach(k => (indices[k] = varIndices[k]))
@@ -174,16 +174,20 @@ export default function Plot({
       }
       window.removeEventListener('resize', resize)
     }
-  }, [useMode])
+  }, [useMode, info.refs.entity, meta.entities, viewAction])
   const formatter = useCallback(
     ({marker, seriesName, value}: {marker: string; seriesName: string; value: number[]}) => {
       const entity = info.refs.entity in indices && meta.entities[value[indices[info.refs.entity]]]
       return (
         '<div class="tooltip-table">' +
-        (view.color ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
+        (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
         '<table>' +
         (info.refs.time in indices && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
-          '<tr><td>' + info.refs.time + '</td><td><strong>' + value[indices[info.refs.time]] + '</strong></td></tr>'
+          '<tr><td>' +
+          variables[info.refs.time].labels.full +
+          '</td><td><strong>' +
+          value[indices[info.refs.time]] +
+          '</strong></td></tr>'
         : '') +
         (view.symbol ?
           '<tr><td>' +
@@ -195,15 +199,15 @@ export default function Plot({
         '<tr><td>' +
         view.x.label() +
         '</td><td><strong>' +
-        formatNumber(value[indices.x], view.x) +
+        formatValue(value[indices.x], view.x) +
         '</strong></td></tr><tr><td>' +
         view.y.label() +
         '</td><td><strong>' +
-        formatNumber(value[indices.y], view.y) +
+        formatValue(value[indices.y], view.y) +
         '</strong></td></tr></table></div>'
       )
     },
-    [view, meta.entities],
+    [view, variables, meta.entities, info.refs.entity, info.refs.time],
   )
   useEffect(() => {
     if (container.current) {
@@ -257,7 +261,7 @@ export default function Plot({
                   type: 'value',
                   gridIndex: i,
                   axisLabel: {
-                    formatter: (x: number) => formatNumberAxis(x, view.x),
+                    formatter: (x: number) => formatValueAxis(x, view.x),
                   },
                   ...baseXAxisOptions,
                 }
@@ -267,7 +271,7 @@ export default function Plot({
                   type: 'value',
                   gridIndex: i,
                   axisLabel: {
-                    formatter: (x: number) => formatNumberAxis(x, view.y),
+                    formatter: (x: number) => formatValueAxis(x, view.y),
                   },
                   ...baseYAxisOptions,
                 }
@@ -298,10 +302,14 @@ export default function Plot({
                   },
                 },
               ],
-              title: title.map(({label, top, left, nEntities}) => {
+              title: title.map(({label, top, left, panelEntities}) => {
+                const nEntities = panelEntities.length
                 return {
                   text: label,
-                  subtext: `Observations from ${nEntities} ${nEntities === 1 ? 'district' : 'districts'}`,
+                  subtext:
+                    nEntities === 1 && panelEntities[0] in meta.entities ?
+                      `Data from ${meta.entities[panelEntities[0]].name}`
+                    : `Observations from ${nEntities} ${nEntities === 1 ? 'district' : 'districts'}`,
                   top,
                   left,
                   contain: true,
@@ -327,7 +335,7 @@ export default function Plot({
         }
       }
     }
-  }, [useMode, panels, range, series, view])
+  }, [useMode, panels, meta, series, view, formatter, range.x, range.y])
   setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
   return (
     <Box
