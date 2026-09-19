@@ -134,7 +134,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
         })
     }
     return params
-  }, [!!info.time_range])
+  }, [categories, info.time_range.max, info.time_range.min])
   const editView = (state: ViewDef, action: ViewAction) => {
     if (action.key === 'replace') {
       updateUrlParams({...urlParams, ...action.view})

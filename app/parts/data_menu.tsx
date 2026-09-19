@@ -39,7 +39,7 @@ export function DataMenu() {
         return cat
       })
       .sort((a, b) => sectionOrder(a.section) - sectionOrder(b.section))
-  }, [!!full.categories])
+  }, [full.categories])
   const lineOptions = useMemo(() => {
     return [
       full.info.refs.entity,
@@ -51,7 +51,7 @@ export function DataMenu() {
         labels: {category: level in full.variables ? full.variables[level].labels.full : level},
       } as unknown as VariableInfo
     })
-  }, [!!full.variable_types])
+  }, [full.variable_types])
   return (
     <>
       <CardContent sx={{overflow: 'hidden', height: 'calc(100% - 60px)', pt: 0, pb: 0}}>

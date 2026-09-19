@@ -133,7 +133,7 @@ export function ProfileDisplay() {
         }
         return entityOptions[id]
       }),
-    [!!meta.entities],
+    [meta.entities],
   )
   const summaries = useMemo(() => {
     const formulas: {[key: string]: string} = {}

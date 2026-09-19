@@ -100,7 +100,7 @@ export function makeSeries(
       d.partitions().forEach(inds => {
         const series = {...baseSeries, xAxisIndex: index, yAxisIndex: index} as LineSeriesOption
         series.name = label
-        series.id = x + y + inds.join(',')
+        series.id = x + y
         if (lines) {
           const lineLevel = d.get(lines, inds[0])
           const entity = entities[lineLevel]

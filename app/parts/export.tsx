@@ -31,10 +31,7 @@ export function Export() {
 
   const [open, setOpen] = useState(false)
   const [fullExport, setFullExport] = useState(false)
-  const data = useMemo(() => {
-    let base = fullExport ? full.data : selected
-    return base
-  }, [fullExport, full.data, selected])
+  const data = useMemo(() => (fullExport ? full.data : selected), [fullExport, full.data, selected])
   const allColumns = useMemo(() => data.columnNames(), [data])
   const [columns, setColumns] = useState(allColumns)
   const [filename, setFilename] = useState('')

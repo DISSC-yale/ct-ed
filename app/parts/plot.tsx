@@ -115,6 +115,7 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
   })
   return {title, grid}
 }
+const indices: {[key: string]: number} = {}
 
 export default function Plot({
   input,
@@ -143,6 +144,7 @@ export default function Plot({
   const {info, meta} = useContext(DataContext) as Resources
   const useMode = modeOverride || mode
   const {series, panels, range, varIndices} = input
+  Object.keys(varIndices).forEach(k => (indices[k] = varIndices[k]))
   panelContainer.current = panels
   const container = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -161,7 +163,7 @@ export default function Plot({
     if (chart)
       chart.on('click', params => {
         if (Array.isArray(params.data)) {
-          const id = params.data[varIndices[info.refs.entity]] as string
+          const id = params.data[indices[info.refs.entity]] as string
           if (id in meta.entities) viewAction({key: 'profile', value: id})
         }
       })
@@ -172,36 +174,36 @@ export default function Plot({
       }
       window.removeEventListener('resize', resize)
     }
-  }, [useMode, varIndices])
+  }, [useMode])
   const formatter = useCallback(
     ({marker, seriesName, value}: {marker: string; seriesName: string; value: number[]}) => {
-      const entity = info.refs.entity in varIndices && meta.entities[value[varIndices[info.refs.entity]]]
+      const entity = info.refs.entity in indices && meta.entities[value[indices[info.refs.entity]]]
       return (
         '<div class="tooltip-table">' +
         (view.color ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
         '<table>' +
-        (info.refs.time in varIndices && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
-          '<tr><td>' + info.refs.time + '</td><td><strong>' + value[varIndices[info.refs.time]] + '</strong></td></tr>'
+        (info.refs.time in indices && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
+          '<tr><td>' + info.refs.time + '</td><td><strong>' + value[indices[info.refs.time]] + '</strong></td></tr>'
         : '') +
         (view.symbol ?
           '<tr><td>' +
           view.symbol +
           '</td><td><strong>' +
-          value[varIndices[view.symbol in varIndices ? view.symbol : 'level']] +
+          value[indices[view.symbol in indices ? view.symbol : 'level']] +
           '</strong></td></tr>'
         : '') +
         '<tr><td>' +
         view.x.label() +
         '</td><td><strong>' +
-        formatNumber(value[varIndices.x], view.x) +
+        formatNumber(value[indices.x], view.x) +
         '</strong></td></tr><tr><td>' +
         view.y.label() +
         '</td><td><strong>' +
-        formatNumber(value[varIndices.y], view.y) +
+        formatNumber(value[indices.y], view.y) +
         '</strong></td></tr></table></div>'
       )
     },
-    [view, meta.entities, varIndices],
+    [view, meta.entities],
   )
   useEffect(() => {
     if (container.current) {
@@ -325,7 +327,7 @@ export default function Plot({
         }
       }
     }
-  }, [input, useMode, panels, range, series, view])
+  }, [useMode, panels, range, series, view])
   setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
   return (
     <Box

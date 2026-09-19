@@ -106,7 +106,7 @@ export function FormulaDrawer({
             }
             title="Entitlement Formula"
           />
-          <CardContent sx={{pb: 0, pt: 0, height: '100%', overflow: 'auto', m: 'auto'}}>
+          <CardContent sx={{pb: 0, pt: 0, height: '100%', overflow: 'auto'}}>
             <FormulaMenu />
           </CardContent>
           <CardActions sx={{justifyContent: 'flex-end', p: 0}}>

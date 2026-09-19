@@ -23,7 +23,7 @@ export function FilterEntities() {
   )
   const allEntities: EntityOption[] = useMemo(
     () => Object.keys(meta.entities).map(makeEntityOption),
-    [!!meta.entities, makeEntityOption],
+    [meta.entities, makeEntityOption],
   )
   const filteredEntities = useMemo(
     () => Object.keys(view.entities_select).map(makeEntityOption),
