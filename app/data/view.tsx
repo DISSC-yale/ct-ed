@@ -1,7 +1,7 @@
 import {type ActionDispatch, createContext, useContext, useEffect, useMemo, useReducer, useState} from 'react'
-import {background, DataContext, Resources, type VariableInfo} from './load'
+import {background, DataContext, Resources} from './load'
 import {ColumnTable} from 'arquero'
-import {Variable} from './variable'
+import {Variable, type VariableInfo} from './variable'
 import {Formula, type ParamValues} from './formula'
 
 export type Variants = 'raw' | 'log' | 'percent'
@@ -27,11 +27,12 @@ export type ViewDef = {
 }
 
 export type ViewAction =
-  | {key: 'reset' | 'flip_panels'}
+  | {key: 'reset' | 'flip_panels' | 'flip_axes'}
   | {key: 'replace'; view: ViewDef}
   | {key: 'x' | 'y'; value: Variable}
   | {key: 'variable'; which: 'x' | 'y'; part: 'selection'; value: VariableInfo[]}
-  | {key: 'variable'; which: 'x' | 'y'; part: 'deflate'; value: boolean}
+  | {key: 'variable'; which: 'x' | 'y'; part: 'agg'; value: string}
+  | {key: 'variable'; which: 'x' | 'y'; part: 'deflate' | 'multi'; value: boolean}
   | {
       key: 'lines' | 'color' | 'symbol' | 'x_panels' | 'y_panels' | 'select_time' | 'profile' | 'profile_section'
       value: string
@@ -153,9 +154,20 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     } else if (action.key === 'variable') {
       if (action.part === 'selection') {
         newState[action.which].setSelection(action.value)
-      } else if (action.part === 'deflate') {
-        newState[action.which].deflate = action.value
+      } else {
+        newState[action.which][action.part as 'multi'] = action.value as boolean
+        if (action.part === 'multi' && !action.value) {
+          const variable = newState[action.which]
+          if (!variable.selection.length) {
+            variable.selection = [variable.category.firstInstance as VariableInfo]
+          } else if (variable.selection.length > 1) {
+            variable.selection = [variable.selection[0]]
+          }
+        }
       }
+    } else if (action.key === 'flip_axes') {
+      newState.x = state.y
+      newState.y = state.x
     } else if (action.key === 'flip_panels') {
       newState.x_panels = state.y_panels
       newState.y_panels = state.x_panels

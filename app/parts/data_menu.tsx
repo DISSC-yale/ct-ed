@@ -15,12 +15,12 @@ import {
   Typography,
 } from '@mui/material'
 import {useContext, useMemo} from 'react'
-import {DataContext, type Resources, type VariableInfo} from '../data/load'
+import {DataContext, type Resources} from '../data/load'
 import {ViewActionContext, ViewContext, ViewDef} from '../data/view'
 import {FilterEntities} from './filter_entities'
 import {FlipCameraAndroid} from '@mui/icons-material'
 import VariableControls from '../data/variable_controls'
-import {SingleSelect} from './selector_single'
+import {SingleSelect, type SelectOption} from './selector_single'
 
 function sectionOrder(section: string) {
   return (
@@ -37,23 +37,26 @@ export function DataMenu() {
   const allVariables = useMemo(() => {
     return Object.values(full.categories)
       .map(cat => {
-        cat.searchString = JSON.stringify(cat)
+        cat.searchString = JSON.stringify(cat.parts)
         return cat
       })
-      .sort((a, b) => sectionOrder(a.section) - sectionOrder(b.section))
+      .sort((a, b) => sectionOrder(a.parts.section) - sectionOrder(b.parts.section))
   }, [full.categories])
   const lineOptions = useMemo(() => {
-    return [
+    const options: {[key: string]: SelectOption} = {}
+    ;[
       full.info.refs.entity,
       ...full.variable_types.categorical.map(x => x.id),
       ...full.variable_types.binary.map(x => x.id),
-    ].map(level => {
-      return {
-        id: level,
-        labels: {category: level in full.variables ? full.variables[level].labels.full : level},
-      } as unknown as VariableInfo
+    ].forEach(id => {
+      options[id] = {
+        key: id,
+        label: id in full.variables ? full.variables[id].labels.full : id,
+      } as SelectOption
     })
+    return options
   }, [full.variable_types, full.variables, full.info.refs.entity])
+  const options = Object.values(lineOptions)
   const showPanelControls = !!view.x_panels || !!view.y_panels
   return (
     <>
@@ -68,28 +71,16 @@ export function DataMenu() {
                 <Typography>X-Axis</Typography>
                 <VariableControls name="x" variable={view.x} allVariables={allVariables} />
               </Stack>
-              <IconButton
-                aria-label="flip axes"
-                onClick={() => {
-                  viewAction({key: 'x', value: view.y.copy()})
-                  viewAction({key: 'y', value: view.x.copy()})
-                }}
-              >
+              <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
                 <FlipCameraAndroid />
               </IconButton>
             </Stack>
             <Typography>Lines</Typography>
             <SingleSelect
               label="Level Source"
-              options={lineOptions}
-              selection={
-                lineOptions.find(({id}) => id === view.lines) ||
-                ({
-                  id: view.lines,
-                  labels: {category: view.lines},
-                } as unknown as VariableInfo)
-              }
-              update={(value: VariableInfo) => viewAction({key: 'lines', value: value.id})}
+              options={options}
+              selection={lineOptions[view.lines] || ''}
+              update={(value: SelectOption | null) => viewAction({key: 'lines', value: value ? value.key : ''})}
               clearable={true}
             />
             <Typography>Panels</Typography>
@@ -97,29 +88,19 @@ export function DataMenu() {
               <Stack spacing={1} sx={{width: showPanelControls ? 'calc(100% - 40px)' : '100%'}}>
                 <SingleSelect
                   label="Y Levels"
-                  options={lineOptions}
-                  selection={
-                    lineOptions.find(({id}) => id === view.y_panels) ||
-                    ({
-                      id: '',
-                      labels: {category: ''},
-                    } as unknown as VariableInfo)
-                  }
-                  update={(value: VariableInfo) => viewAction({key: 'y_panels', value: value.id})}
+                  options={options}
+                  selection={lineOptions[view.y_panels] || ''}
+                  update={(value: SelectOption | null) => viewAction({key: 'y_panels', value: value ? value.key : ''})}
                   clearable={true}
                 />
                 {showPanelControls && (
                   <SingleSelect
                     label="X Levels"
-                    options={lineOptions}
-                    selection={
-                      lineOptions.find(({id}) => id === view.x_panels) ||
-                      ({
-                        id: '',
-                        labels: {category: ''},
-                      } as unknown as VariableInfo)
+                    options={options}
+                    selection={lineOptions[view.x_panels] || ''}
+                    update={(value: SelectOption | null) =>
+                      viewAction({key: 'x_panels', value: value ? value.key : ''})
                     }
-                    update={(value: VariableInfo) => viewAction({key: 'x_panels', value: value.id})}
                     clearable={true}
                   />
                 )}

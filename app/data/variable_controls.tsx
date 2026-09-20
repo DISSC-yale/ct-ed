@@ -10,14 +10,21 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import {Category, Variable} from './variable'
-import {useContext} from 'react'
+import {Category, Variable, type VariableInfo} from './variable'
+import {useContext, useMemo} from 'react'
 import {ViewActionContext} from './view'
 import {DataContext, type Resources} from './load'
 import {Selector} from '../parts/selector'
-import {SingleSelect} from '../parts/selector_single'
+import {SingleSelect, type SelectOption} from '../parts/selector_single'
+import {BasicSelector} from '../parts/selector_basic'
 
 const filterOptions = createFilterOptions({stringify: (option: Category) => option.searchString})
+
+function infoToOption(info: VariableInfo): SelectOption {
+  return {key: info.id, label: info.labels.category}
+}
+
+const aggOptions = ['none', 'sum', 'mean', 'median']
 
 export default function VariableControls({
   name,
@@ -29,7 +36,14 @@ export default function VariableControls({
   allVariables: Category[]
 }) {
   const viewAction = useContext(ViewActionContext)
-  const {categories} = useContext(DataContext) as Resources
+  const {categories, variables} = useContext(DataContext) as Resources
+  const options = useMemo(() => {
+    const o: {[key: string]: SelectOption} = {}
+    Object.values(variable.category.variables).forEach(v => {
+      o[v.id] = infoToOption(v)
+    })
+    return o
+  }, [variable.category.variables])
   return (
     <Card variant="outlined">
       <CardHeader
@@ -59,26 +73,63 @@ export default function VariableControls({
               }
             }}
           ></Autocomplete>
-          {variable.category && variable.category.categories.length > 1 ?
+          {variable.category && variable.category.levels.length ?
             variable.multi ?
-              <Selector
-                label="Levels"
-                options={variable.category.categories}
-                selection={variable.selection}
-                update={value => viewAction({key: 'variable', which: name, part: 'selection', value})}
-              />
+              <>
+                <Selector
+                  label="Levels"
+                  options={Object.values(options)}
+                  selection={variable.selection.map(({id}) => options[id])}
+                  update={value => {
+                    viewAction({
+                      key: 'variable',
+                      which: name,
+                      part: 'selection',
+                      value: value.map(({key}) => variables[key]),
+                    })
+                  }}
+                />
+                {variable.selection.length > 1 ?
+                  <BasicSelector
+                    label="Level Aggregation"
+                    options={aggOptions}
+                    selection={(variable.agg || 'none') as unknown as string}
+                    update={(option: string) => viewAction({key: 'variable', which: name, part: 'agg', value: option})}
+                  />
+                : <></>}
+              </>
             : <SingleSelect
                 label="Level"
-                options={variable.category.categories}
-                selection={variable.selection[0]}
-                update={value => viewAction({key: 'variable', which: name, part: 'selection', value: [value]})}
+                options={Object.values(variable.category.variables).map(infoToOption)}
+                selection={infoToOption(variable.selection[0])}
+                update={value =>
+                  viewAction({
+                    key: 'variable',
+                    which: name,
+                    part: 'selection',
+                    value: [variable.category.variables[(value as SelectOption).key]],
+                  })
+                }
               />
 
           : <></>}
+          {variable.category.levels.length ?
+            <FormControlLabel
+              label="Multiple Levels"
+              labelPlacement="end"
+              control={
+                <Switch
+                  size="small"
+                  checked={variable.multi}
+                  onChange={() => viewAction({key: 'variable', which: name, part: 'multi', value: !variable.multi})}
+                />
+              }
+            />
+          : <></>}
           {variable.firstType === 'dollar' ?
             <FormControlLabel
-              label="Adjust for Inflation"
-              labelPlacement="start"
+              label="Inflation Adjust"
+              labelPlacement="end"
               control={
                 <Switch
                   size="small"

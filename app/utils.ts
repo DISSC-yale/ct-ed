@@ -53,6 +53,8 @@ export const CPI_U = new Map([
 ])
 
 export function deflatorTable() {
-  const t = from(CPI_U, ['year', 'cpi_u'])
-  return t.derive({general__cpi_u_deflator: `max(d.cpi_u) / d.cpi_u`}).select(['year', 'general__cpi_u_deflator'])
+  const t = from(CPI_U, ['general__fiscal_year', 'cpi_u'])
+  return t
+    .derive({general__cpi_u_deflator: `max(d.cpi_u) / d.cpi_u`})
+    .select(['general__fiscal_year', 'general__cpi_u_deflator'])
 }

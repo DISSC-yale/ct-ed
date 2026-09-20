@@ -1,15 +1,32 @@
 import {addFunction, type ColumnTable} from 'arquero'
 import {statistics} from 'echarts-stat'
-import type {VariableInfo} from './load'
+
+export type VariableTypes =
+  | 'time'
+  | 'entity_id'
+  | 'entity_name'
+  | 'weight'
+  | 'binary'
+  | 'categorical'
+  | 'dollar'
+  | 'value'
+
+export type VariableInfo = {
+  id: string
+  type: VariableTypes
+  parts: {section: string; variable: string; category: string}
+  labels: {section: string; variable: string; category: string; full: string}
+  category?: Category
+}
 
 export type Category = {
   key: string
-  section: string
-  variable: string
+  parts: {section: string; variable: string}
   labels: {section: string; variable: string}
-  categories: VariableInfo[]
+  levels: string[]
+  variables: {[key: string]: VariableInfo}
   searchString: string
-  firstInstance?: VariableInfo | undefined
+  firstInstance?: VariableInfo
 }
 export type Categories = {[key: string]: Category}
 
@@ -18,13 +35,15 @@ export class Variable {
   category: Category
   categories?: Categories
   selection: VariableInfo[]
-  multi?: boolean
-  agg?: 'sum' | 'mean' | 'median'
+  multi = false
+  agg: 'none' | 'sum' | 'mean' | 'median' = 'none'
+  crossAgg: 'sum' | 'mean' | 'median' = 'mean'
   deflate?: boolean
   firstType = 'value'
 
-  constructor(spec: Variable | string, categories?: Categories) {
+  constructor(spec: Variable | string, categories?: Categories, selection?: VariableInfo | VariableInfo[]) {
     if ('string' === typeof spec) spec = this.fromString(spec)
+    if (selection) spec.selection = Array.isArray(selection) ? [...selection] : [selection]
     if (!categories && spec.categories) categories = spec.categories
     this.id = spec.id
     const [section, name] = spec.id.split('__')
@@ -33,10 +52,10 @@ export class Variable {
         categories[spec.id]
       : {
           key: spec.id,
-          section,
-          variable: name,
+          parts: {section, variable: name},
           labels: {section, variable: name},
-          categories: [],
+          levels: [],
+          variables: {},
           searchString: '',
           firstInstance: spec.category ? spec.category.firstInstance : undefined,
         }
@@ -46,21 +65,23 @@ export class Variable {
     if ('deflate' in spec) this.deflate = spec.deflate
     if ('firstType' in spec) this.firstType = spec.firstType
     if (categories && spec.selection && spec.selection.length) {
-      const categoryMap: {[key: string]: VariableInfo} = {}
-      this.category.categories.forEach(cat => (categoryMap[cat.id] = cat))
       this.selection = []
       spec.selection.forEach(cat => {
-        if (cat.id in categoryMap) spec.selection.push(categoryMap[cat.id])
+        if (cat.id in this.category.variables) this.selection.push(this.category.variables[cat.id])
       })
-      if (!this.selection.length)
-        this.selection = this.multi ? [...this.category.categories] : [this.category.categories[0]]
+      if (this.selection.length) {
+        if (!this.multi && this.selection.length > 1) this.multi = true
+      } else {
+        this.selection =
+          this.multi ? [...Object.values(this.category.variables)] : [this.category.firstInstance as VariableInfo]
+      }
     } else {
       this.selection =
         spec.selection && spec.selection.length ? [...spec.selection]
-        : this.category.categories.length ?
+        : this.category.levels.length ?
           this.multi ?
-            [...this.category.categories]
-          : [this.category.categories[0]]
+            [...Object.values(this.category.variables)]
+          : [this.category.firstInstance as VariableInfo]
         : []
     }
     if (this.category.firstInstance) {
@@ -73,16 +94,30 @@ export class Variable {
     }
   }
   addTo(data: ColumnTable, name: string) {
+    if (this.multi && this.selection.length > 1 && this.agg === 'none') {
+      const names: string[] = []
+      const formulas: {[key: string]: string} = {}
+      const aggers: {[key: string]: string} = {}
+      this.selection.forEach(({id}) => {
+        const colName = `${name}_${id}`
+        names.push(colName)
+        formulas[colName] = `d.${id}${this.deflate ? ' * d.general__cpi_u_deflator' : ''}`
+        aggers[colName] = `${this.crossAgg}(d.${colName})`
+      })
+      return {names, aggers, data: data.derive(formulas)}
+    }
     let id =
-      this.selection.length < 2 ?
-        'd.' + (this.category.categories.length > 1 ? this.selection[0].id : this.id)
-      : `row_${this.agg || 'sum'}(compact(Object.values(row_object('${this.getColNames().join("','")}'))))`
-    if (this.deflate) id = `(!${id} ? ${id} : ${id} * d.general__cpi_u_deflator)`
-    return data.derive({[name]: id})
+      this.selection.length === 1 || !this.category.levels.length ?
+        'd.' + (this.category.levels.length ? this.selection[0].id : this.id)
+      : this.agg === 'none' ? 'null'
+      : `row_${this.agg}(compact(Object.values(row_object('${this.getColNames().join("','")}'))))`
+    if (this.deflate) id = `(${id} == null ? ${id} : ${id} * d.general__cpi_u_deflator)`
+    data = data.derive({[name]: id})
+    return {names: [name], aggers: {[name]: `${this.crossAgg}(d.${name})`}, data}
   }
   getColNames(access: string = '') {
-    return (this.selection.length ? this.selection : this.category.categories).map(
-      cat => `${access}${this.category.key}${cat.id ? '__' + cat.id : ''}`,
+    return (this.selection.length ? this.selection : Object.values(this.category.variables)).map(
+      cat => `${access}${cat.id || this.category.key}`,
     )
   }
   setSelection(selection: VariableInfo | VariableInfo[]) {
@@ -93,17 +128,23 @@ export class Variable {
   }
   label() {
     const {section, variable} = this.category.labels
+    const aggregated = this.agg !== 'none' && this.selection.length > 1
     return (
       (section === variable || section === 'General' ? variable : `${section} - ${variable}`) +
-      (this.category.categories.length > 1 ? ' - ' + this.selection[0].labels.category : '') +
+      (aggregated && this.category.levels.length ?
+        this.selection.length === 1 ?
+          ` - ${this.selection[0].labels.category}`
+        : ` - ${this.agg === 'none' ? 'mean' : this.agg}(${this.selection.map(({labels}) => labels.category).join(', ')})`
+      : '') +
       (this.deflate ? ' (2026 $)' : '')
     )
   }
   toString() {
     return (
       this.id +
-      (this.category.categories.length > 1 && this.category.categories.length !== this.selection.length ?
-        `[${this.selection.map(c => c.id).join(',')}]` + (this.agg ? `.${this.agg}` : '')
+      (this.category.levels.length && this.selection.length ?
+        `[${this.selection.map(c => c.parts.category).join(',')}]` +
+        (this.agg !== 'none' && this.selection.length > 1 ? `.${this.agg}` : '')
       : '')
     )
   }
@@ -113,13 +154,16 @@ export class Variable {
     if (parts.length > 1) partial.agg = parts[1] as 'sum'
     const variableParts = parts[0].split('[')
     partial.id = variableParts[0]
-    if (variableParts.length > 1)
+    if (variableParts.length > 1) {
       partial.selection = variableParts[1]
         .replace(']', '')
         .split(',')
-        .map(id => {
-          return {id, labels: {category: id}} as unknown as VariableInfo
-        })
+        .map(id =>
+          this.category ? this.category.variables[id] : ({id: partial.id + '__' + id} as unknown as VariableInfo),
+        )
+    } else if (this.category && this.category.levels.length) {
+      partial.selection = Object.values(this.category.variables)
+    }
     return partial as Variable
   }
 }

@@ -176,8 +176,21 @@ export default function Plot({
     }
   }, [useMode, info.refs.entity, meta.entities, viewAction])
   const formatter = useCallback(
-    ({marker, seriesName, value}: {marker: string; seriesName: string; value: number[]}) => {
+    ({
+      marker,
+      seriesName,
+      seriesId,
+      value,
+    }: {
+      marker: string
+      seriesName: string
+      seriesId: string
+      value: number[]
+    }) => {
       const entity = info.refs.entity in indices && meta.entities[value[indices[info.refs.entity]]]
+      const parts = seriesId.split('.')
+      const xCateogry = parts[0].replace('x_', '')
+      const yCateogry = parts[2].replace('y_', '')
       return (
         '<div class="tooltip-table">' +
         (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
@@ -189,21 +202,14 @@ export default function Plot({
           value[indices[info.refs.time]] +
           '</strong></td></tr>'
         : '') +
-        (view.symbol ?
-          '<tr><td>' +
-          view.symbol +
-          '</td><td><strong>' +
-          value[indices[view.symbol in indices ? view.symbol : 'level']] +
-          '</strong></td></tr>'
-        : '') +
         '<tr><td>' +
-        view.x.label() +
+        (xCateogry === 'x' ? view.x.label() : view.x.category.variables[xCateogry].labels.full) +
         '</td><td><strong>' +
-        formatValue(value[indices.x], view.x) +
+        formatValue(value[0], view.x) +
         '</strong></td></tr><tr><td>' +
-        view.y.label() +
+        (yCateogry === 'y' ? view.y.label() : view.y.category.variables[yCateogry].labels.full) +
         '</td><td><strong>' +
-        formatValue(value[indices.y], view.y) +
+        formatValue(value[1], view.y) +
         '</strong></td></tr></table></div>'
       )
     },
@@ -219,7 +225,13 @@ export default function Plot({
           const darkMode = useMode === 'dark'
           const colors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
           panelSpacing.legendWidth = 0
-          if (view.lines) {
+          let legendName = ''
+          if (view.lines) legendName = variables[view.lines].labels.full
+          if (view.y.multi && view.y.agg === 'none' && view.y.selection.length > 1)
+            legendName += (legendName ? ', ' : '') + view.y.label()
+          if (view.x.multi && view.x.agg === 'none' && view.x.selection.length > 1)
+            legendName += (legendName ? ', ' : '') + view.x.label()
+          if (legendName) {
             series.forEach(s => {
               const len = (s.name as string).length
               if (len > panelSpacing.legendWidth) panelSpacing.legendWidth = len
@@ -231,16 +243,17 @@ export default function Plot({
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
           panelContainer.current = panels
           const {title, grid} = resizePanels(frame, panels)
+          const seriesNames = [...new Set(series.map(s => s.name).sort())]
           chart.setOption(
             {
               darkMode,
               legend: {
-                top: '55',
+                top: '35',
                 align: 'right',
                 right: 'right',
                 orient: 'vertical',
                 type: 'scroll',
-                data: view.lines ? [...new Set(series.map(s => s.name).sort())] : [],
+                data: legendName && seriesNames.length > 1 ? seriesNames : [],
               },
               backgroundColor: colors.bg,
               tooltip: {
@@ -301,6 +314,20 @@ export default function Plot({
                     textAlign: 'center',
                   },
                 },
+                legendName ?
+                  {
+                    type: 'text',
+                    top: 16,
+                    right: 15,
+                    bottom: 20,
+                    style: {
+                      text: legendName,
+                      fill: colors.text,
+                      font: `${labelSize * 0.8}em "Roboto","Helvetica","Arial",sans-serif`,
+                      textAlign: 'right',
+                    },
+                  }
+                : null,
               ],
               title: title.map(({label, top, left, panelEntities}) => {
                 const nEntities = panelEntities.length
@@ -320,6 +347,8 @@ export default function Plot({
               grid,
               series,
               toolbox: {
+                left: 0,
+                bottom: 0,
                 feature: {
                   saveAsImage: {
                     name: 'ct_ed_',

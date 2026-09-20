@@ -1,5 +1,5 @@
 import {Autocomplete, TextField} from '@mui/material'
-import type {VariableInfo} from '../data/load'
+export type SelectOption = {key: string; label: string}
 
 export function SingleSelect({
   label,
@@ -9,9 +9,9 @@ export function SingleSelect({
   clearable,
 }: {
   label: string
-  options: VariableInfo[]
-  selection: VariableInfo
-  update: (selection: VariableInfo) => void
+  options: SelectOption[]
+  selection: SelectOption
+  update: (selection: SelectOption | null) => void
   clearable?: boolean
 }) {
   return (
@@ -20,9 +20,8 @@ export function SingleSelect({
       fullWidth
       options={options}
       value={selection}
-      onChange={(_, value) => update(value || ({id: '', labels: {category: ''}} as unknown as VariableInfo))}
+      onChange={(_, value) => update(value)}
       disableClearable={!clearable}
-      getOptionLabel={option => option.labels.category}
       renderInput={params => <TextField {...params} label={label} />}
     />
   )

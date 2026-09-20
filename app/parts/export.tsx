@@ -84,7 +84,6 @@ export function Export() {
               <Autocomplete
                 options={allColumns}
                 sx={{'& li': {p: 0}}}
-                getOptionDisabled={option => view.time_agg === 'mean' && option === 'year'}
                 renderOption={(props, option, {selected}) => {
                   const {key, ...optionProps} = props
                   return (

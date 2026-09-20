@@ -3,7 +3,7 @@
 import {ColumnTable, loadJSON} from 'arquero'
 import {createContext, useEffect, useState} from 'react'
 import {Backdrop, Stack, Typography} from '@mui/material'
-import {initCustomFunctions, type Categories} from './variable'
+import {initCustomFunctions, type Categories, type VariableInfo, type VariableTypes} from './variable'
 import {Formula, type FormulaSpec} from './formula'
 import {deflatorTable} from '../utils'
 
@@ -12,7 +12,6 @@ export type Info = {
   time_range: {min: number; max: number}
   deflator: ColumnTable
 }
-type VariableTypes = 'time' | 'entity_id' | 'entity_name' | 'weight' | 'binary' | 'categorical' | 'dollar' | 'value'
 export type Entities = {[index: string]: {id: string; name: string; color: string}}
 export type Metadata = {
   updated: string
@@ -30,16 +29,6 @@ export type Resources = {
   variable_types: {[key: string]: VariableInfo[]}
   info: Info
   selectEntities: {[key: string]: boolean}
-}
-export type VariableInfo = {
-  id: string
-  type: VariableTypes
-  section: string
-  variable: string
-  category_id: string
-  category: string
-  labels: {section: string; variable: string; category: string; full: string}
-  levels?: string[]
 }
 
 export const DataContext = createContext<Resources | null>(null)
@@ -95,38 +84,39 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
     newData.columnNames().forEach(id => {
       const [section, variable, category] = id.split('__')
       const {variable_parts} = meta
+      const category_id = `${section}__${variable}`
       const v = (variables[id] = {
         id,
         type:
           id in meta.types ? meta.types[id]
           : dollarVars.test(id) ? 'dollar'
           : 'value',
-        section,
-        variable,
-        category_id: `${section}__${variable}`,
-        category,
+        parts: {section, variable, category},
         labels: {
           section: translatePart(section, variable_parts),
           variable: translatePart(variable, variable_parts),
           category: category ? translatePart(category, variable_parts) : '',
           full: makeFullLabel(id, variable_parts),
         },
-      })
-      if (!(v.category_id in categories))
-        categories[v.category_id] = {
-          key: v.category_id,
-          section,
-          variable,
+      }) as VariableInfo
+      if (!(category_id in categories))
+        categories[category_id] = {
+          key: category_id,
+          parts: {section, variable},
           labels: {section: v.labels.section, variable: v.labels.variable},
-          categories: [],
+          levels: [],
+          variables: {[id]: v},
           searchString: '',
           firstInstance: v,
         }
-      v.category && categories[v.category_id].categories.push(v)
+      const cat = categories[category_id]
+      v.category = cat
+      if (!(id in cat.variables)) cat.variables[id] = v
+      if (v.parts.category) cat.levels.push(v.parts.category)
       if (!(v.type in variable_types)) variable_types[v.type] = []
       variable_types[v.type].push(v)
     })
-    newData = newData.lookup(info.deflator, [info.refs.time, 'year'])
+    newData = newData.lookup(info.deflator, info.refs.time)
     if ('time' in variable_types) {
       const id = variable_types.time[0].id
       const range = data

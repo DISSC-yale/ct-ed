@@ -48,7 +48,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
         height: 35,
         justifyContent: 'space-between',
         alignItems: 'center',
-        '& .MuiBox-root': {transition: 'right 700ms, left 700ms', transitionDelay: '200ms'},
+        '& .MuiBox-root': {transition: 'right 700ms, left 700ms'},
       }}
       spacing={1}
       direction="row"
@@ -174,19 +174,18 @@ export function ProfileDisplay() {
       const sections: {[key: string]: {id: string; label: string}} = {}
       const section: {[key: string]: ReactElement} = {}
       Object.keys(values).forEach(id => {
-        const v = variables[id]
-        sections[v.section] = {id: v.section, label: v.labels.section}
-        if (v.section === view.profile_section) {
-          if (v.category) {
-            if (!(v.labels.category in section)) {
-              const category = categories[v.category_id]
-              section[v.category_id] = (
-                <Card key={v.id} sx={{p: 0}}>
-                  <CardHeader title={<Typography variant="h6">{v.labels.variable}</Typography>} />
+        const {parts, labels, category} = variables[id]
+        sections[parts.section] = {id: parts.section, label: labels.section}
+        if (category && parts.section === view.profile_section) {
+          if (parts.category) {
+            if (!(labels.category in section)) {
+              section[id] = (
+                <Card key={id} sx={{p: 0}}>
+                  <CardHeader title={<Typography variant="h6">{labels.variable}</Typography>} />
                   <CardContent sx={{p: 0, pb: '0px !important'}}>
                     <Table size="small">
                       <TableBody>
-                        {category.categories.map(cat => (
+                        {Object.values(category.variables).map(cat => (
                           <SummaryRow
                             value={values[cat.id]}
                             key={cat.id}
@@ -201,13 +200,13 @@ export function ProfileDisplay() {
               )
             }
           } else {
-            section[v.id] = (
-              <Card key={v.id} sx={{p: 0}}>
-                <CardHeader title={<Typography variant="h6">{v.labels.variable}</Typography>} />
+            section[id] = (
+              <Card key={id} sx={{p: 0}}>
+                <CardHeader title={<Typography variant="h6">{labels.variable}</Typography>} />
                 <CardContent sx={{p: 0, pb: '0px !important'}}>
                   <Table size="small">
                     <TableBody>
-                      <SummaryRow value={values[v.id]} summary={summaries[v.id]} />
+                      <SummaryRow value={values[id]} summary={summaries[id]} />
                     </TableBody>
                   </Table>
                 </CardContent>

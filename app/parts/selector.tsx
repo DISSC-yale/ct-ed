@@ -1,5 +1,5 @@
 import {Autocomplete, Button, Checkbox, Stack, TextField, Typography} from '@mui/material'
-import type {VariableInfo} from '../data/load'
+import type {SelectOption} from './selector_single'
 
 export function Selector({
   label,
@@ -8,9 +8,9 @@ export function Selector({
   update,
 }: {
   label: string
-  options: VariableInfo[]
-  selection: VariableInfo[]
-  update: (selection: VariableInfo[]) => void
+  options: SelectOption[]
+  selection: SelectOption[]
+  update: (selection: SelectOption[]) => void
 }) {
   return (
     <Stack direction="row">
@@ -22,15 +22,16 @@ export function Selector({
           return (
             <li key={key} {...optionProps}>
               <Checkbox checked={selected} />
-              {option.labels.category}
+              {option.label}
             </li>
           )
         }}
+        getOptionLabel={option => option.key}
         renderInput={params => <TextField {...params} label={label} />}
         value={selection}
         renderValue={() => (
           <Typography sx={{p: 1, pt: 0, pb: 0}}>
-            {selection.length} / {options.length}
+            {selection.length === 1 ? selection[0].label : `${selection.length} / ${options.length}`}
           </Typography>
         )}
         multiple
