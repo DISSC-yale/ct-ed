@@ -178,8 +178,9 @@ export function ProfileDisplay() {
         sections[parts.section] = {id: parts.section, label: labels.section}
         if (category && parts.section === view.profile_section) {
           if (parts.category) {
-            if (!(labels.category in section)) {
-              section[id] = (
+            const category_id = parts.section + parts.variable
+            if (!(category_id in section)) {
+              section[category_id] = (
                 <Card key={id} sx={{p: 0}}>
                   <CardHeader title={<Typography variant="h6">{labels.variable}</Typography>} />
                   <CardContent sx={{p: 0, pb: '0px !important'}}>
