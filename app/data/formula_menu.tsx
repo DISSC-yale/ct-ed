@@ -41,7 +41,7 @@ export default function FormulaMenu() {
   }, [formulaParams, editFormula, params])
   const colStyle = {overflow: 'auto', pt: 1, minWidth: 150}
   return (
-    <Stack spacing={2} direction="row" sx={{height: '100%', justifyContent: {lg: 'center'}}}>
+    <Stack spacing={2} direction="row" sx={{height: '100%', overflowX: 'auto', justifyContent: {lg: 'center'}}}>
       <Stack>
         <Typography>Primary Weights</Typography>
         <Stack spacing={1} sx={colStyle}>

@@ -176,7 +176,7 @@
     "pct": {"label": "Percent"},
     "prof": {"label": "proficiency"},
     "sp": {"label": "Spending"},
-    "ecs": {"label": "Education Cost Savings"},
+    "ecs": {"label": "Education Cost Sharing"},
     "tot": {"label": "Total"},
     "frpl": {"label": "Free or Reduced-Price Lunch"},
     "mhi": {"label": "Median Household Income"},

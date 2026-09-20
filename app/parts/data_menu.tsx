@@ -54,10 +54,11 @@ export function DataMenu() {
       } as unknown as VariableInfo
     })
   }, [full.variable_types, full.variables, full.info.refs.entity])
+  const showPanelControls = !!view.x_panels || !!view.y_panels
   return (
     <>
       <CardContent sx={{overflow: 'hidden', height: 'calc(100% - 60px)', pt: 0, pb: 0}}>
-        <Box sx={{overflowY: 'auto', height: '100%', overflow: 'hidden'}}>
+        <Box sx={{overflowY: 'auto', height: '100%'}}>
           <Stack spacing={2}>
             <Typography variant="h6">Variables</Typography>
             <Stack direction="row" sx={{alignItems: 'center'}}>
@@ -93,7 +94,7 @@ export function DataMenu() {
             />
             <Typography>Panels</Typography>
             <Stack direction="row" sx={{alignItems: 'center'}}>
-              <Stack spacing={1} sx={{width: 'calc(100% - 40px)'}}>
+              <Stack spacing={1} sx={{width: showPanelControls ? 'calc(100% - 40px)' : '100%'}}>
                 <SingleSelect
                   label="Y Levels"
                   options={lineOptions}
@@ -107,42 +108,45 @@ export function DataMenu() {
                   update={(value: VariableInfo) => viewAction({key: 'y_panels', value: value.id})}
                   clearable={true}
                 />
-                <SingleSelect
-                  label="X Levels"
-                  options={lineOptions}
-                  selection={
-                    lineOptions.find(({id}) => id === view.x_panels) ||
-                    ({
-                      id: '',
-                      labels: {category: ''},
-                    } as unknown as VariableInfo)
-                  }
-                  update={(value: VariableInfo) => viewAction({key: 'x_panels', value: value.id})}
-                  clearable={true}
-                />
-                {view.x_panels ||
-                  (view.y_panels && (
-                    <FormControlLabel
-                      label="Common Axis Ranges"
-                      labelPlacement="start"
-                      control={
-                        <Switch
-                          size="small"
-                          checked={view.lock_range}
-                          onChange={() => viewAction({key: 'lock_range', value: !view.lock_range})}
-                        />
-                      }
-                    />
-                  ))}
+                {showPanelControls && (
+                  <SingleSelect
+                    label="X Levels"
+                    options={lineOptions}
+                    selection={
+                      lineOptions.find(({id}) => id === view.x_panels) ||
+                      ({
+                        id: '',
+                        labels: {category: ''},
+                      } as unknown as VariableInfo)
+                    }
+                    update={(value: VariableInfo) => viewAction({key: 'x_panels', value: value.id})}
+                    clearable={true}
+                  />
+                )}
+                {showPanelControls && (
+                  <FormControlLabel
+                    label="Common Axis Ranges"
+                    labelPlacement="start"
+                    control={
+                      <Switch
+                        size="small"
+                        checked={view.lock_range}
+                        onChange={() => viewAction({key: 'lock_range', value: !view.lock_range})}
+                      />
+                    }
+                  />
+                )}
               </Stack>
-              <IconButton
-                aria-label="flip panel axes"
-                onClick={() => {
-                  viewAction({key: 'flip_panels'})
-                }}
-              >
-                <FlipCameraAndroid />
-              </IconButton>
+              {showPanelControls && (
+                <IconButton
+                  aria-label="flip panel axes"
+                  onClick={() => {
+                    viewAction({key: 'flip_panels'})
+                  }}
+                >
+                  <FlipCameraAndroid />
+                </IconButton>
+              )}
             </Stack>
             <Typography variant="h6">Filters</Typography>
             <FilterEntities />

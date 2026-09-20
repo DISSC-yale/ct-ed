@@ -47,11 +47,16 @@ export const DataContext = createContext<Resources | null>(null)
 const dollarVars =
   /^(?:sp__|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|engl|median|endo|region|full|entitlement|prior|change|base_formula|phase)|computed__(?:actual|median|base|endo|region|grant|full|funding|entitlement|change))/
 const firstLetters = /\b(\w)/g
-function translatePart(p: string, parts: {[key: string]: {label: string}}) {
+type partLabels = {[key: string]: {label: string}}
+function translatePart(p: string, parts: partLabels) {
   return p
     .split('_')
     .map(sp => (sp in parts ? parts[sp].label : sp.replaceAll(firstLetters, l => l.toUpperCase())))
     .join(' ')
+}
+function makeFullLabel(name: string, parts: partLabels) {
+  const p = name.split('__').map(f => translatePart(f, parts))
+  return (p[0] === p[1] || p[0] === 'General' ? p[1] : `${p[0]} - ${p[1]}`) + (p.length > 2 ? ' - ' + p[2] : '')
 }
 
 export const background: {formula?: Formula} = {}
@@ -104,10 +109,7 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
           section: translatePart(section, variable_parts),
           variable: translatePart(variable, variable_parts),
           category: category ? translatePart(category, variable_parts) : '',
-          full: id
-            .split('__')
-            .map(part => translatePart(part, variable_parts))
-            .join(' - '),
+          full: makeFullLabel(id, variable_parts),
         },
       })
       if (!(v.category_id in categories))

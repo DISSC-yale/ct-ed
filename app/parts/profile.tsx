@@ -27,6 +27,14 @@ import {formatValue} from '../utils'
 function numberSummary(v: string) {
   return `[min(d.${v}), quantile(d.${v}, .25), median(d.${v}), mean(d.${v}), quantile(d.${v}, .75), max(d.${v})]`
 }
+const color = {
+  base: '#9c9c9c',
+  quartile: '#2f65a7',
+  mean: '#ececec',
+  median: '#b6b6b6',
+  current: '#b13030',
+}
+
 function SummaryBar({value, summary}: {value: number; summary: number[]}) {
   const absMin = Math.abs(summary[0])
   const s = summary.map(v => v + absMin)
@@ -40,25 +48,25 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
         height: 35,
         justifyContent: 'space-between',
         alignItems: 'center',
-        '& .MuiBox-root': {transition: 'right 700ms, left 700ms', transitionDelay: '100ms'},
+        '& .MuiBox-root': {transition: 'right 700ms, left 700ms', transitionDelay: '200ms'},
       }}
       spacing={1}
       direction="row"
     >
       <Box
         sx={{
-          opacity: 0.8,
+          opacity: 0.75,
           width: 100,
           textAlign: 'right',
         }}
       >
         {formatValue(summary[0])}
       </Box>
-      <Box sx={{backgroundColor: '#858585', height: 10, position: 'relative', width: '100%'}}>
+      <Box sx={{backgroundColor: color.base, height: 10, position: 'relative', width: '100%'}}>
         <Box
           sx={{
             position: 'absolute',
-            backgroundColor: '#2f65a7',
+            backgroundColor: color.quartile,
             height: 10,
             left: ((s[1] - min) / denom) * 100 + '%',
             right: (1 - (s[4] - min) / denom) * 100 + '%',
@@ -69,7 +77,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             position: 'absolute',
             height: 10,
             width: 2,
-            backgroundColor: '#ececec',
+            backgroundColor: color.mean,
             left: ((s[3] - min) / denom) * 100 + '%',
           }}
         ></Box>
@@ -79,9 +87,9 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             top: 0,
             height: 30,
             width: 2,
-            backgroundColor: '#b6b6b6',
+            backgroundColor: color.median,
             lineHeight: 2.8,
-            opacity: 0.8,
+            opacity: 0.75,
             textIndent: 5,
             left: summary[2] == null ? '50%' : ((s[2] - min) / denom) * 100 + '%',
           }}
@@ -93,7 +101,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             position: 'absolute',
             height: 30,
             width: 2,
-            backgroundColor: '#b13030',
+            backgroundColor: color.current,
             top: '-19px',
             textIndent: 5,
             left: value == null ? '50%' : ((value + absMin - min) / denom) * 100 + '%',
@@ -104,7 +112,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
       </Box>
       <Box
         sx={{
-          opacity: 0.8,
+          opacity: 0.75,
           width: 100,
         }}
       >
@@ -286,9 +294,125 @@ export function ProfileDisplay() {
                 renderInput={params => <TextField {...params} label="Variable Section" />}
                 sx={{pt: 3}}
               />
-              <Stack spacing={1} sx={{overflowY: 'auto'}}>
+              <Stack spacing={1} sx={{overflowY: 'auto', mb: 1}}>
                 <Stack spacing={1}>{Object.values(summaryDisplay.section)}</Stack>
               </Stack>
+              <Table size="small">
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{border: 'none'}}>
+                      <Stack
+                        sx={{
+                          position: 'relative',
+                          width: '100%',
+                          height: 30,
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          '& .MuiBox-root': {transition: 'right 700ms, left 700ms', transitionDelay: '200ms'},
+                        }}
+                        spacing={1}
+                        direction="row"
+                      >
+                        <Box
+                          sx={{
+                            opacity: 0.75,
+                            width: 100,
+                            textAlign: 'right',
+                          }}
+                        >
+                          Min
+                        </Box>
+                        <Box sx={{backgroundColor: color.base, height: 10, position: 'relative', width: '100%'}}>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              backgroundColor: color.quartile,
+                              height: 10,
+                              left: '25%',
+                              right: '25%',
+                            }}
+                          ></Box>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              height: 10,
+                              left: '23%',
+                              lineHeight: 2.8,
+                              opacity: 0.75,
+                              textIndent: 5,
+                            }}
+                          >
+                            25%
+                          </Box>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              height: 10,
+                              width: 2,
+                              backgroundColor: color.mean,
+                              left: '60%',
+                              lineHeight: 2.8,
+                              opacity: 0.75,
+                              textIndent: 5,
+                            }}
+                          >
+                            Mean
+                          </Box>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              height: 10,
+                              width: 2,
+                              left: '73%',
+                              lineHeight: 2.8,
+                              opacity: 0.75,
+                              textIndent: 5,
+                            }}
+                          >
+                            75%
+                          </Box>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              top: 0,
+                              height: 25,
+                              width: 2,
+                              backgroundColor: color.median,
+                              lineHeight: 2.8,
+                              opacity: 0.75,
+                              textIndent: 5,
+                              left: '40%',
+                            }}
+                          >
+                            Median
+                          </Box>
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              height: 28,
+                              width: 2,
+                              backgroundColor: color.current,
+                              top: '-17px',
+                              textIndent: 5,
+                              left: '50%',
+                            }}
+                          >
+                            District
+                          </Box>
+                        </Box>
+                        <Box
+                          sx={{
+                            opacity: 0.8,
+                            width: 100,
+                          }}
+                        >
+                          Max
+                        </Box>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </>
           : <Box sx={{p: 5, textAlign: 'center'}}>
               <Typography>No data available.</Typography>
