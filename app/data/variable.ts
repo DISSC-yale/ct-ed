@@ -29,6 +29,9 @@ export type Category = {
   firstInstance?: VariableInfo
 }
 export type Categories = {[key: string]: Category}
+type AdditionalVariable = {operator: 'none' | '-' | '*' | '/'; variable: Variable}
+const operatorMap = {none: 'n', '-': 's', '*': 'm', '/': 'd'}
+const operatorLabelMap = {none: 'and', '-': 'minus', '*': 'multiplied by', '/': 'divided by'}
 
 export class Variable {
   id: string
@@ -40,6 +43,7 @@ export class Variable {
   crossAgg: 'sum' | 'mean' | 'median' = 'mean'
   deflate?: boolean
   firstType = 'value'
+  additional?: AdditionalVariable
 
   constructor(spec: Variable | string, categories?: Categories, selection?: VariableInfo | VariableInfo[]) {
     if ('string' === typeof spec) spec = this.fromString(spec)
@@ -64,6 +68,12 @@ export class Variable {
     if ('multi' in spec) this.multi = spec.multi
     if ('deflate' in spec) this.deflate = spec.deflate
     if ('firstType' in spec) this.firstType = spec.firstType
+    if ('additional' in spec && spec.additional) {
+      this.additional = spec.additional
+      if (categories && !this.additional.variable.categories) {
+        this.additional.variable = new Variable(this.additional.variable, categories)
+      }
+    }
     if (categories && spec.selection && spec.selection.length) {
       this.selection = []
       spec.selection.forEach(cat => {
@@ -93,6 +103,15 @@ export class Variable {
       this.deflate = true
     }
   }
+  formula() {
+    let id =
+      this.selection.length === 1 || !this.category.levels.length ?
+        'd.' + (this.category.levels.length ? this.selection[0].id : this.id)
+      : this.agg === 'none' ? 'null'
+      : `row_${this.agg}(compact(Object.values(row_object('${this.getColNames().join("','")}'))))`
+    if (this.deflate) id = `(${id} == null ? ${id} : ${id} * d.general__cpi_u_deflator)`
+    return id
+  }
   addTo(data: ColumnTable, name: string) {
     if (this.multi && this.selection.length > 1 && this.agg === 'none') {
       const names: string[] = []
@@ -106,12 +125,10 @@ export class Variable {
       })
       return {names, aggers, data: data.derive(formulas)}
     }
-    let id =
-      this.selection.length === 1 || !this.category.levels.length ?
-        'd.' + (this.category.levels.length ? this.selection[0].id : this.id)
-      : this.agg === 'none' ? 'null'
-      : `row_${this.agg}(compact(Object.values(row_object('${this.getColNames().join("','")}'))))`
-    if (this.deflate) id = `(${id} == null ? ${id} : ${id} * d.general__cpi_u_deflator)`
+    let id = this.formula()
+    if (this.additional && this.additional.operator !== 'none') {
+      id += ` ${this.additional.operator} (${this.additional.variable.formula()})`
+    }
     data = data.derive({[name]: id})
     return {names: [name], aggers: {[name]: `${this.crossAgg}(d.${name})`}, data}
   }
@@ -126,7 +143,7 @@ export class Variable {
   copy() {
     return new Variable(this)
   }
-  label() {
+  label(): string {
     const {section, variable} = this.category.labels
     const aggregated = this.agg !== 'none' && this.selection.length > 1
     return (
@@ -136,7 +153,8 @@ export class Variable {
           ` - ${this.selection[0].labels.category}`
         : ` - ${this.agg === 'none' ? 'mean' : this.agg}(${this.selection.map(({labels}) => labels.category).join(', ')})`
       : '') +
-      (this.deflate ? ' (2026 $)' : '')
+      (this.deflate ? ' (2026 $)' : '') +
+      (this.additional ? ` ${operatorLabelMap[this.additional.operator]} ${this.additional.variable.label()}` : '')
     )
   }
   toString() {
@@ -145,15 +163,20 @@ export class Variable {
       (this.category.levels.length && this.selection.length ?
         `[${this.selection.map(c => c.parts.category).join(',')}]` +
         (this.agg !== 'none' && this.selection.length > 1 ? `.${this.agg}` : '')
-      : '')
+      : '') +
+      (this.additional ? `-${operatorMap[this.additional.operator]}${this.additional.variable}` : '')
     )
   }
   fromString(spec: string) {
     const partial: Partial<Variable> = {}
-    const parts = spec.split('.')
+    const additionalParts = spec.split('-')
+    const parts = additionalParts[0].split('.')
     if (parts.length > 1) partial.agg = parts[1] as 'sum'
     const variableParts = parts[0].split('[')
     partial.id = variableParts[0]
+    if (this.categories && !(partial.id in this.categories)) {
+      partial.id = Object.keys(this.categories)[0]
+    }
     if (variableParts.length > 1) {
       partial.selection = variableParts[1]
         .replace(']', '')
@@ -163,6 +186,14 @@ export class Variable {
         )
     } else if (this.category && this.category.levels.length) {
       partial.selection = Object.values(this.category.variables)
+    }
+    if (additionalParts.length > 1) {
+      const map: {[key: string]: string} = {}
+      Object.keys(operatorMap).forEach(to => (map[operatorMap[to as '-']] = to))
+      const operator = map[additionalParts[1].substring(0, 1)] as '-'
+      if (operator) {
+        partial.additional = {operator, variable: new Variable(additionalParts[1].substring(1), this.categories)}
+      }
     }
     return partial as Variable
   }

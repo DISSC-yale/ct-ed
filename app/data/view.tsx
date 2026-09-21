@@ -26,13 +26,22 @@ export type ViewDef = {
   profile_section: string
 }
 
+type Operator = 'none' | '-' | '*' | '/'
+
+type VariableAction = {key: 'variable'; which: 'x' | 'y'} & (
+  | {part: 'selection'; value: VariableInfo[]}
+  | {part: 'agg'; value: string}
+  | {part: 'deflate' | 'multi' | 'additional.remove'; value: boolean}
+  | {part: 'additional'; value: {operator: Operator; variable: Variable}}
+  | {part: 'additional.action'; action: ViewAction}
+  | {part: 'additional.operator'; value: Operator}
+)
+
 export type ViewAction =
   | {key: 'reset' | 'flip_panels' | 'flip_axes'}
   | {key: 'replace'; view: ViewDef}
   | {key: 'x' | 'y'; value: Variable}
-  | {key: 'variable'; which: 'x' | 'y'; part: 'selection'; value: VariableInfo[]}
-  | {key: 'variable'; which: 'x' | 'y'; part: 'agg'; value: string}
-  | {key: 'variable'; which: 'x' | 'y'; part: 'deflate' | 'multi'; value: boolean}
+  | VariableAction
   | {
       key: 'lines' | 'color' | 'symbol' | 'x_panels' | 'y_panels' | 'select_time' | 'profile' | 'profile_section'
       value: string
@@ -45,7 +54,7 @@ export type ViewAction =
 const defaultView: ViewDef = {
   lock_range: false,
   x: new Variable('general__fiscal_year'),
-  y: new Variable('computed__entitlement'),
+  y: new Variable('computed__entitlement-secs__entitlement_with_alliance_hh'),
   lines: 'general__district_code',
   color: '',
   symbol: '',
@@ -105,6 +114,21 @@ export type FormulaEditAction =
   | {key: 'param'; which: string; value: number[]; index: number}
   | {key: 'set'; value: ParamValues}
 
+function applyVariableAction(variable: Variable, action: VariableAction) {
+  if (action.part === 'selection') {
+    variable.setSelection(action.value)
+  } else if (action.part !== 'additional.action') {
+    variable[action.part as 'multi'] = action.value as boolean
+    if (action.part === 'multi' && !action.value) {
+      if (!variable.selection.length) {
+        variable.selection = [variable.category.firstInstance as VariableInfo]
+      } else if (variable.selection.length > 1) {
+        variable.selection = [variable.selection[0]]
+      }
+    }
+  }
+}
+
 export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
   const {info, categories, selectEntities, data} = useContext(DataContext) as Resources
   const formula = background.formula as Formula
@@ -152,18 +176,29 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       newState.entities = Object.keys(action.value).length < 10 ? Object.keys(action.value).join(',') : ''
       newState.entities_select = {...action.value}
     } else if (action.key === 'variable') {
-      if (action.part === 'selection') {
-        newState[action.which].setSelection(action.value)
-      } else {
-        newState[action.which][action.part as 'multi'] = action.value as boolean
-        if (action.part === 'multi' && !action.value) {
-          const variable = newState[action.which]
-          if (!variable.selection.length) {
-            variable.selection = [variable.category.firstInstance as VariableInfo]
-          } else if (variable.selection.length > 1) {
-            variable.selection = [variable.selection[0]]
+      const variable = newState[action.which]
+      if (action.part.startsWith('additional')) {
+        if (action.part === 'additional') {
+          variable.additional = action.value
+        } else if (action.part === 'additional.remove') {
+          delete variable.additional
+        } else {
+          if (!variable.additional) {
+            variable.additional = {operator: 'none', variable: new Variable(variable.id, categories)}
+          }
+          const additional = variable.additional
+          if (action.part === 'additional.operator') {
+            additional.operator = action.value
+          } else if (action.part === 'additional.action') {
+            if (action.action.key === action.which) {
+              additional.variable = action.action.value
+            } else {
+              applyVariableAction(additional.variable, action.action as VariableAction)
+            }
           }
         }
+      } else {
+        applyVariableAction(variable, action)
       }
     } else if (action.key === 'flip_axes') {
       newState.x = state.y

@@ -31,6 +31,7 @@ export class Formula {
   values: ParamValues
   refs: {entity: string; time: string}
   min_time = 0
+  apply_after = 2025
 
   constructor(spec: Partial<FormulaSpec>, refs?: {entity: string; time: string}) {
     this.section = spec.section || ''
@@ -142,7 +143,7 @@ export class Formula {
     const timeFilter = `d.${this.refs.time} === ${time}`
     let eq = step.equation
     if (isPrior) {
-      if (time < 2025 || time === this.min_time) {
+      if (time < this.apply_after || time === this.min_time) {
         eq = eq.split('|')[1]
       } else {
         state.data = data
