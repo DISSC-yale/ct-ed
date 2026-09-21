@@ -53,6 +53,8 @@ if __name__ == "__main__":
         columns={
             "enrollment_total": "enrollment__total",
             "ppe_ext__ppe_total": "sp__ppe_total",
+            "computed__ecs_entitlement_with_alliance_hh": "computed__entitlement",
+            "computed__ecs_entitlement_without_alliance_hh": "computed__entitlement_no_alliance",
         },
         inplace=True,
     )

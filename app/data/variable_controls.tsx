@@ -162,17 +162,17 @@ function FieldControls({
             })
           }
         >
-          Remove Additional
+          Remove Adjuster
         </Button>
       )}
       {!isAdditional &&
         (variable.additional ?
           <Stack spacing={1} sx={{p: 2, pt: 0}}>
             <FormControl variant="outlined" fullWidth size="small">
-              <InputLabel id="operator_select">Operator</InputLabel>
+              <InputLabel id="operator_select">Adjustment</InputLabel>
               <Select
                 labelId="operator_select"
-                label="Operator"
+                label="Adjustment"
                 value={variable.additional.operator}
                 onChange={e => {
                   update({key: 'variable', which: name, part: 'additional.operator', value: e.target.value})
@@ -181,6 +181,7 @@ function FieldControls({
                 {operatorOptions}
               </Select>
             </FormControl>
+            <Typography variant="caption">{variable.additional.variable.category.labels.section}</Typography>
             <FieldControls
               isAdditional={true}
               name={name}
@@ -203,7 +204,7 @@ function FieldControls({
               })
             }
           >
-            Add
+            Add Adjuster
           </Button>)}
     </Stack>
   )
@@ -230,7 +231,7 @@ export default function VariableControls({
   return (
     <Card variant="outlined">
       <CardHeader
-        sx={{p: 1, '& .MuiCardHeader-content': {maxWidth: '100%', width: '100%'}}}
+        sx={{p: 0.5, pl: 1, '& .MuiCardHeader-content': {maxWidth: '100%', width: '100%'}}}
         title={
           <Typography sx={{textOverflow: 'ellipsis', overflow: 'hidden'}}>
             {variable.category.labels.section}

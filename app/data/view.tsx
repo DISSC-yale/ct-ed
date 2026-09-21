@@ -54,7 +54,7 @@ export type ViewAction =
 const defaultView: ViewDef = {
   lock_range: false,
   x: new Variable('general__fiscal_year'),
-  y: new Variable('computed__entitlement-secs__entitlement_with_alliance_hh'),
+  y: new Variable('computed__entitlement-secs__entitlement'),
   lines: 'general__district_code',
   color: '',
   symbol: '',

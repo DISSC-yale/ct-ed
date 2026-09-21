@@ -44,8 +44,12 @@ function translatePart(p: string, parts: partLabels) {
     .join(' ')
 }
 function makeFullLabel(name: string, parts: partLabels) {
-  const p = name.split('__').map(f => translatePart(f, parts))
-  return (p[0] === p[1] || p[0] === 'General' ? p[1] : `${p[0]} - ${p[1]}`) + (p.length > 2 ? ' - ' + p[2] : '')
+  const r = name.split('__')
+  const p = r.map(f => translatePart(f, parts))
+  return (
+    (p[0] === p[1] || p[0] === 'General' ? p[1] : `${r[0].length < 5 ? r[0].toUpperCase() : p[0]}, ${p[1]}`) +
+    (p.length > 2 ? ', ' + p[2] : '')
+  )
 }
 
 export const background: {formula?: Formula} = {}

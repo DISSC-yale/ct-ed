@@ -31,7 +31,7 @@ export type Category = {
 export type Categories = {[key: string]: Category}
 type AdditionalVariable = {operator: 'none' | '-' | '*' | '/'; variable: Variable}
 const operatorMap = {none: 'n', '-': 's', '*': 'm', '/': 'd'}
-const operatorLabelMap = {none: 'and', '-': 'minus', '*': 'multiplied by', '/': 'divided by'}
+const operatorLabelMap = {none: 'and', '-': '-', '*': '*', '/': '/'}
 
 export class Variable {
   id: string
@@ -147,11 +147,13 @@ export class Variable {
     const {section, variable} = this.category.labels
     const aggregated = this.agg !== 'none' && this.selection.length > 1
     return (
-      (section === variable || section === 'General' ? variable : `${section} - ${variable}`) +
-      (aggregated && this.category.levels.length ?
-        this.selection.length === 1 ?
-          ` - ${this.selection[0].labels.category}`
-        : ` - ${this.agg === 'none' ? 'mean' : this.agg}(${this.selection.map(({labels}) => labels.category).join(', ')})`
+      (section === variable || section === 'General' ?
+        variable
+      : `${this.category.parts.section.length < 5 ? this.category.parts.section.toUpperCase() : section} ${variable}`) +
+      (this.category.levels.length ?
+        this.selection.length === 1 ? ` ${this.selection[0].labels.category}`
+        : aggregated ? ` ${this.agg}(${this.selection.map(({labels}) => labels.category).join(' ')})`
+        : ''
       : '') +
       (this.deflate ? ' (2026 $)' : '') +
       (this.additional ? ` ${operatorLabelMap[this.additional.operator]} ${this.additional.variable.label()}` : '')
