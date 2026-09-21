@@ -5,7 +5,7 @@ import {Panel, PlotInput} from '../parts/plot'
 import {unique} from '../utils'
 import type {ViewDef} from './view'
 
-const colors = ['#2F8CBF', '#A3651E', '#72CED5', '#C4AB4B', '#7E1700', '#C8E9B6', '#1549A2']
+const colors = ['#FDB8C1', '#30685B', '#FAA588', '#577646', '#E09651', '#818231', '#B28D2E', '#185461', '#F9CCF9']
 const symbols = ['circle', 'triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow']
 
 function indexMap(data: ColumnTable, variable: string) {
@@ -76,8 +76,8 @@ export function makeSeries(
         (x !== '' ? view.x_panels + ': ' + (x || 0) + (y ? ', ' : '') : '') +
         (y !== '' ? view.y_panels + ': ' + (y || 0) : '')
       let d = selectData
-      if (panelX) d = d.filter(`d.${panelX} == '${x}'`)
-      if (panelY) d = d.filter(`d.${panelY} == '${y}'`)
+      if (panelX) d = d.filter(`d.${panelX} === ` + ('string' === typeof x ? `'${x}'` : x))
+      if (panelY) d = d.filter(`d.${panelY} === ` + ('string' === typeof y ? `'${y}'` : y))
       const yRefs = view.y.addTo(d, 'y')
       const xRefs = view.x.addTo(yRefs.data, 'x')
       d = xRefs.data

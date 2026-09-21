@@ -10,7 +10,7 @@
     "ecs__reform_district_flag": "binary",
     "ecs__drg": "categorical",
     "ecs__fully_funded_gt_prior_year": "categorical",
-    "ppe_ext__deflator": "weight"
+    "computed__more_than_last": "binary"
   },
   "formula": {
     "section": "ecs__",
