@@ -186,22 +186,24 @@ export function DataMenu() {
             : <></>}
             <Typography variant="h6">Filters</Typography>
             <FilterEntities />
-            <FormControl size="small" fullWidth>
-              <InputLabel id="time_agg_select">Year Per District</InputLabel>
-              <Select
-                labelId="time_agg_select"
-                label="Year Per District"
-                value={view.time_agg}
-                onChange={e => {
-                  viewAction({key: 'time_agg', value: e.target.value as 'last'})
-                }}
-              >
-                <MenuItem value="all">All Years</MenuItem>
-                <MenuItem value="first">Earliest Year</MenuItem>
-                <MenuItem value="specified">Specified Year</MenuItem>
-                <MenuItem value="last">Latest Year</MenuItem>
-              </Select>
-            </FormControl>
+            {view.advanced || view.time_agg !== 'all' ?
+              <FormControl size="small" fullWidth>
+                <InputLabel id="time_agg_select">Year Per District</InputLabel>
+                <Select
+                  labelId="time_agg_select"
+                  label="Year Per District"
+                  value={view.time_agg}
+                  onChange={e => {
+                    viewAction({key: 'time_agg', value: e.target.value as 'last'})
+                  }}
+                >
+                  <MenuItem value="all">All Years</MenuItem>
+                  <MenuItem value="first">Earliest Year</MenuItem>
+                  <MenuItem value="specified">Specified Year</MenuItem>
+                  <MenuItem value="last">Latest Year</MenuItem>
+                </Select>
+              </FormControl>
+            : <></>}
             {view.time_agg === 'specified' ?
               <TextField
                 label="Year"

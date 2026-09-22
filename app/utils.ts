@@ -5,8 +5,8 @@ import type {VariableInfo} from './data/variable'
 const formatter = Intl.NumberFormat().format
 export function formatValue(x: number, info?: VariableInfo): string | number | undefined {
   if (x == null) return 'NA'
-  if ('number' !== typeof x) return x
   const type = info ? info.type : 'value'
+  if ('number' !== typeof x || type === 'time') return x
   return (
     (type === 'dollar' ? '$' : '') +
     (x % 1 === 0 ? formatter(x)
