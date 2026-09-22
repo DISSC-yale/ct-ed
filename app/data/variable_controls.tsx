@@ -214,13 +214,15 @@ export default function VariableControls({
   name,
   variable,
   allVariables,
+  categories,
 }: {
   name: 'x' | 'y'
   variable: Variable
   allVariables: Category[]
+  categories: Categories
 }) {
   const viewAction = useContext(ViewActionContext)
-  const {categories, variables} = useContext(DataContext) as Resources
+  const {variables} = useContext(DataContext) as Resources
   const options = useMemo(() => {
     const o: {[key: string]: SelectOption} = {}
     Object.values(variable.category.variables).forEach(v => {

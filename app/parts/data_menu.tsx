@@ -22,12 +22,23 @@ import {FlipCameraAndroid} from '@mui/icons-material'
 import VariableControls from '../data/variable_controls'
 import {SingleSelect, type SelectOption} from './selector_single'
 
+const categoryRank = {
+  rev: 1,
+  sp: 2,
+  ecs: 3,
+  computed: 4,
+  enrollment: 5,
+  sbac: 6,
+  grad4: 7,
+  Revenue: 1,
+  Expenditures: 2,
+  'ECS Formula Components': 3,
+  'Computed Formula Components': 4,
+  'School Demographic and Performance': 5,
+  'Special Education': 6,
+}
 function sectionOrder(section: string) {
-  return (
-    section === 'ecs' ? 0
-    : section === 'computed' ? 1
-    : 2
-  )
+  return categoryRank[section as 'rev'] || 99
 }
 
 export function DataMenu() {
@@ -37,11 +48,19 @@ export function DataMenu() {
   const allVariables = useMemo(() => {
     return Object.values(full.categories)
       .map(cat => {
-        cat.searchString = JSON.stringify(cat.parts)
+        cat.searchString = JSON.stringify({...cat.parts, ...cat.labels})
         return cat
       })
       .sort((a, b) => sectionOrder(a.parts.section) - sectionOrder(b.parts.section))
   }, [full.categories])
+  const selectVariables = useMemo(() => {
+    return Object.values(full.selectCategories)
+      .map(cat => {
+        cat.searchString = JSON.stringify({...cat.parts, ...cat.labels})
+        return cat
+      })
+      .sort((a, b) => sectionOrder(a.labels.section) - sectionOrder(b.labels.section))
+  }, [full.selectCategories])
   const lineOptions = useMemo(() => {
     const options: {[key: string]: SelectOption} = {}
     ;[
@@ -62,73 +81,109 @@ export function DataMenu() {
     <>
       <CardContent sx={{overflow: 'hidden', height: 'calc(100% - 60px)', pt: 0, pb: 0}}>
         <Box sx={{overflowY: 'auto', height: '100%'}}>
-          <Stack spacing={2}>
+          <Stack spacing={1}>
             <Typography variant="h6">Variables</Typography>
-            <Stack direction="row" sx={{alignItems: 'center'}}>
-              <Stack spacing={1} sx={{width: 'calc(100% - 40px)'}}>
-                <Typography>Y-Axis</Typography>
-                <VariableControls name="y" variable={view.y} allVariables={allVariables} />
-                <Typography>X-Axis</Typography>
-                <VariableControls name="x" variable={view.x} allVariables={allVariables} />
-              </Stack>
-              <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
-                <FlipCameraAndroid />
-              </IconButton>
-            </Stack>
-            <Typography>Lines</Typography>
-            <SingleSelect
-              label="Level Source"
-              options={options}
-              selection={lineOptions[view.lines] || ''}
-              update={(value: SelectOption | null) => viewAction({key: 'lines', value: value ? value.key : ''})}
-              clearable={true}
-            />
-            <Typography>Panels</Typography>
-            <Stack direction="row" sx={{alignItems: 'center'}}>
-              <Stack spacing={1} sx={{width: showPanelControls ? 'calc(100% - 40px)' : '100%'}}>
-                <SingleSelect
-                  label="Y Levels"
-                  options={options}
-                  selection={lineOptions[view.y_panels] || ''}
-                  update={(value: SelectOption | null) => viewAction({key: 'y_panels', value: value ? value.key : ''})}
-                  clearable={true}
+            <FormControlLabel
+              label="Advanced"
+              labelPlacement="start"
+              sx={{'& .MuiFormControlLabel-root': {mt: 0}}}
+              control={
+                <Switch
+                  size="small"
+                  checked={view.advanced}
+                  onChange={() => viewAction({key: 'advanced', value: !view.advanced})}
                 />
-                {showPanelControls && (
-                  <SingleSelect
-                    label="X Levels"
-                    options={options}
-                    selection={lineOptions[view.x_panels] || ''}
-                    update={(value: SelectOption | null) =>
-                      viewAction({key: 'x_panels', value: value ? value.key : ''})
-                    }
-                    clearable={true}
+              }
+            />
+            {view.advanced ?
+              <Stack direction="row" sx={{alignItems: 'center'}}>
+                <Stack spacing={1} sx={{width: 'calc(100% - 40px)'}}>
+                  <Typography>Y-Axis</Typography>
+                  <VariableControls
+                    name="y"
+                    variable={view.y}
+                    allVariables={allVariables}
+                    categories={full.categories}
                   />
-                )}
-                {showPanelControls && (
-                  <FormControlLabel
-                    label="Common Axis Ranges"
-                    labelPlacement="start"
-                    control={
-                      <Switch
-                        size="small"
-                        checked={view.lock_range}
-                        onChange={() => viewAction({key: 'lock_range', value: !view.lock_range})}
-                      />
-                    }
+                  <Typography>X-Axis</Typography>
+                  <VariableControls
+                    name="x"
+                    variable={view.x}
+                    allVariables={allVariables}
+                    categories={full.categories}
                   />
-                )}
-              </Stack>
-              {showPanelControls && (
-                <IconButton
-                  aria-label="flip panel axes"
-                  onClick={() => {
-                    viewAction({key: 'flip_panels'})
-                  }}
-                >
+                </Stack>
+                <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
                   <FlipCameraAndroid />
                 </IconButton>
-              )}
-            </Stack>
+              </Stack>
+            : <VariableControls
+                name="y"
+                variable={view.y}
+                allVariables={selectVariables}
+                categories={full.selectCategories}
+              />
+            }
+            {view.advanced ?
+              <>
+                <Typography>Lines</Typography>
+                <SingleSelect
+                  label="Level Source"
+                  options={options}
+                  selection={lineOptions[view.lines] || ''}
+                  update={(value: SelectOption | null) => viewAction({key: 'lines', value: value ? value.key : ''})}
+                  clearable={true}
+                />
+                <Typography>Panels</Typography>
+                <Stack direction="row" sx={{alignItems: 'center'}}>
+                  <Stack spacing={1} sx={{width: showPanelControls ? 'calc(100% - 40px)' : '100%'}}>
+                    <SingleSelect
+                      label="Y Levels"
+                      options={options}
+                      selection={lineOptions[view.y_panels] || ''}
+                      update={(value: SelectOption | null) =>
+                        viewAction({key: 'y_panels', value: value ? value.key : ''})
+                      }
+                      clearable={true}
+                    />
+                    {showPanelControls && (
+                      <SingleSelect
+                        label="X Levels"
+                        options={options}
+                        selection={lineOptions[view.x_panels] || ''}
+                        update={(value: SelectOption | null) =>
+                          viewAction({key: 'x_panels', value: value ? value.key : ''})
+                        }
+                        clearable={true}
+                      />
+                    )}
+                    {showPanelControls && (
+                      <FormControlLabel
+                        label="Common Axis Ranges"
+                        labelPlacement="start"
+                        control={
+                          <Switch
+                            size="small"
+                            checked={view.lock_range}
+                            onChange={() => viewAction({key: 'lock_range', value: !view.lock_range})}
+                          />
+                        }
+                      />
+                    )}
+                  </Stack>
+                  {showPanelControls && (
+                    <IconButton
+                      aria-label="flip panel axes"
+                      onClick={() => {
+                        viewAction({key: 'flip_panels'})
+                      }}
+                    >
+                      <FlipCameraAndroid />
+                    </IconButton>
+                  )}
+                </Stack>
+              </>
+            : <></>}
             <Typography variant="h6">Filters</Typography>
             <FilterEntities />
             <FormControl size="small" fullWidth>

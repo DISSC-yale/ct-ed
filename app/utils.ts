@@ -1,20 +1,18 @@
 import {from, type ColumnTable} from 'arquero'
 import type {LineSeriesOption} from 'echarts'
-import type {Variable} from './data/variable'
+import type {VariableInfo} from './data/variable'
 
 const formatter = Intl.NumberFormat().format
-export function formatValue(x: number, info?: Variable): string | number | undefined {
-  if (
-    ('number' !== typeof x && x != null) ||
-    (info && info.category.firstInstance && info.category.firstInstance.type === 'time')
-  ) {
-    return x
-  }
+export function formatValue(x: number, info?: VariableInfo): string | number | undefined {
   if (x == null) return 'NA'
+  if ('number' !== typeof x) return x
+  const type = info ? info.type : 'value'
   return (
-    x % 1 === 0 ? formatter(x)
+    (type === 'dollar' ? '$' : '') +
+    (x % 1 === 0 ? formatter(x)
     : Math.abs(x) > 1e3 ? formatter(+(x + Number.EPSILON).toFixed(2))
-    : +(x + Number.EPSILON).toFixed(2)
+    : +(x + Number.EPSILON).toFixed(2)) +
+    (type === 'percent' ? '%' : '')
   )
 }
 

@@ -12,6 +12,52 @@
     "ecs__fully_funded_gt_prior_year": "categorical",
     "computed__more_than_last": "binary"
   },
+  "select_variables": [
+    {"section": "Revenue", "variables": ["rev__"]},
+    {"section": "Expenditures", "variables": ["sp__"]},
+    {
+      "section": "ECS Formula Components",
+      "variables": [
+        "ecs__resident_students",
+        "ecs__frpl_students",
+        "ecs__concentrated_poverty_students",
+        "ecs__ell_students",
+        "ecs__total_need_students",
+        "ecs__engl_3yr_avg",
+        "ecs__median_household_income",
+        "ecs__wealth_adjustment_factor",
+        "ecs__students_sent_to_regional_district",
+        "ecs__students_sent_to_endowed_academies",
+        "ecs__base_aid_ratio",
+        "ecs__fully_funded_grant",
+        "ecs__entitlement"
+      ]
+    },
+    {
+      "section": "Computed Formula Components",
+      "variables": [
+        "computed__resident_students",
+        "computed__frpl_students",
+        "computed__ell_students",
+        "computed__total_need_students",
+        "computed__wealth_adjustment_factor",
+        "computed__base_aid_ratio",
+        "computed__fully_funded_grant",
+        "computed__entitlement"
+      ]
+    },
+    {
+      "section": "School Demographic and Performance",
+      "variables": [
+        "enrollment__total",
+        "enrollment__by_race_pct",
+        "sbac__pct_prof_ela",
+        "sbac__pct_prof_math",
+        "grad4__graduation_rate"
+      ]
+    },
+    {"section": "Special Education", "variables": ["enrollment__by_program__sped", "swd__", "sped__"]}
+  ],
   "formula": {
     "section": "ecs__",
     "params": {
@@ -123,36 +169,36 @@
       "2025": {"underfunded": 0.565, "overfunded": 0}
     },
     "steps": {
-      "entitlement_prior": "s.entitlement|d.prior_year_entitlement",
+      "prior_entitlement": "s.entitlement|d.prior_entitlement",
       "poverty": "round(d.frpl_students*p.need, p.digits)",
-      "resident": "round(d.resident_students*p.resident, p.digits)",
-      "high_poverty": "round(limit(d.frpl_students-s.resident, 0)*p.excess_resident, p.digits)",
+      "resident_students": "round(d.resident_students*p.resident, p.digits)",
+      "high_poverty": "round(limit(d.frpl_students-s.resident_students, 0)*p.excess_resident, p.digits)",
       "poverty_portion": "round(d.frpl_students/d.resident_students, p.digits)",
       "poverty_limit": "s.poverty_portion > p.frpl_limit ? s.poverty_portion*p.frpl_limit : 0",
       "poverty_concentrated": "round(d.resident_students*s.poverty_limit, p.digits)",
       "poverty_concentrated_adj": "round(s.poverty_concentrated*p.frpl_concentration, p.digits)",
-      "ell": "round(d.ell_students*p.ell, p.digits)",
-      "frpl": "round(d.frpl_students*p.need, p.digits)",
-      "need": "d.resident_students+s.poverty+s.high_poverty+s.ell",
+      "ell_students": "round(d.ell_students*p.ell, p.digits)",
+      "frpl_students": "round(d.frpl_students*p.need, p.digits)",
+      "total_need_students": "d.resident_students+s.poverty+s.high_poverty+s.ell_students",
       "engl_pc": "round(d.engl_3yr_avg/d.total_population, p.digits)",
       "engl_agg": "round(median(s.engl_pc)*p.engl_mhi, p.digits)",
       "engl_adjustment": "round(s.engl_pc/s.engl_agg, p.adjustment_digits)",
       "mhi_agg": "round(median(d.median_household_income)*p.engl_mhi, p.digits)",
       "mhi_adjustment": "round(d.median_household_income/s.mhi_agg, p.adjustment_digits)",
-      "wealth_adjustment": "round(1-((s.engl_adjustment*p.engl)+(s.mhi_adjustment*p.mhi)), p.adjustment_digits)",
-      "base_aid_ratio": "limit(s.wealth_adjustment, !d.psd_flag & !d.alliance_district_flag ? p.non_alliance_min : p.alliance_min)",
+      "wealth_adjustment_factor": "round(1-((s.engl_adjustment*p.engl)+(s.mhi_adjustment*p.mhi)), p.adjustment_digits)",
+      "base_aid_ratio": "limit(s.wealth_adjustment_factor, !d.psd_flag & !d.alliance_district_flag ? p.non_alliance_min : p.alliance_min)",
       "base_aid_ratio_final": "s.base_aid_ratio+p.pic",
       "regional_bonus": "round(d.students_sent_to_regional_district*d.n_regional_district_grades*p.regional_bonus, p.dollar_digits)",
-      "endowed_bonus": "round(d.students_sent_to_endowed_academies*d.n_endowed_academy_grades*p.endowed_bonus, p.dollar_digits)",
-      "base_aid": "round(s.need*s.base_aid_ratio_final*p.foundation, p.dollar_digits)",
-      "full_grant": "s.regional_bonus+s.endowed_bonus+s.base_aid",
-      "full_grant_harm_held": "!d.alliance_district_flag ? s.full_grant : row_max(d.actual_fy2017, s.entitlement_prior, s.full_grant)",
-      "grant_adjustment": "limit(s.full_grant-s.entitlement_prior, 0)",
-      "more_than_last": "s.full_grant > s.entitlement_prior",
+      "endowed_academy_bonus": "round(d.students_sent_to_endowed_academies*d.n_endowed_academy_grades*p.endowed_bonus, p.dollar_digits)",
+      "base_aid": "round(s.total_need_students*s.base_aid_ratio_final*p.foundation, p.dollar_digits)",
+      "fully_funded_grant": "s.regional_bonus+s.endowed_academy_bonus+s.base_aid",
+      "full_grant_harm_held": "!d.alliance_district_flag ? s.fully_funded_grant : row_max(d.actual_fy2017, s.prior_entitlement, s.fully_funded_grant)",
+      "grant_adjustment": "limit(s.fully_funded_grant-s.prior_entitlement, 0)",
+      "more_than_last": "s.fully_funded_grant > s.prior_entitlement",
       "funding_adjustment": "round(s.grant_adjustment*(s.more_than_last ? p.underfunded : p.overfunded), p.final_digits)",
-      "entitlement_no_alliance": "s.funding_adjustment+s.entitlement_prior",
-      "entitlement": "!d.alliance_district_flag ? s.entitlement_no_alliance : row_max(d.actual_fy2017, s.entitlement_prior, s.entitlement_no_alliance)",
-      "change": "s.entitlement-s.entitlement_prior"
+      "entitlement_no_alliance": "s.funding_adjustment+s.prior_entitlement",
+      "entitlement": "!d.alliance_district_flag ? s.entitlement_no_alliance : row_max(d.actual_fy2017, s.prior_entitlement, s.entitlement_no_alliance)",
+      "change": "s.entitlement-s.prior_entitlement"
     }
   },
   "variable_parts": {
@@ -185,7 +231,8 @@
     "avg": {"label": "Average"},
     "exp": {"label": "Expenditures"},
     "hh": {"label": "Harm Held"},
-    "gt": {"label": "Grant"}
+    "gt": {"label": "Grant"},
+    "prior": {"label": "Prior Year"}
   },
   "entities": {
     "id": [

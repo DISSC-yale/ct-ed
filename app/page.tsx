@@ -12,7 +12,7 @@ import {FormulaDrawer} from './parts/formula_drawer'
 import {ProfileDisplay} from './parts/profile'
 
 const MENU_WIDTH = 350
-const DRAWER_HEIGHT = 32
+const DRAWER_HEIGHT = 33
 let resizeAnimationFrame: number | NodeJS.Timeout = -1
 
 export default function Home() {

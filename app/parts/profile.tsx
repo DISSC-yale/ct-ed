@@ -23,6 +23,7 @@ import {DataContext, type Resources} from '../data/load'
 import {entityOptions, filterOptions, type EntityOption} from './filter_entities'
 import {FullDataContext, ViewActionContext, ViewContext, type ViewDef} from '../data/view'
 import {formatValue} from '../utils'
+import type {VariableInfo} from '../data/variable'
 
 function numberSummary(v: string) {
   return `[min(d.${v}), quantile(d.${v}, .25), median(d.${v}), mean(d.${v}), quantile(d.${v}, .75), max(d.${v})]`
@@ -35,7 +36,7 @@ const color = {
   current: '#b13030',
 }
 
-function SummaryBar({value, summary}: {value: number; summary: number[]}) {
+function SummaryBar({value, summary, info}: {value: number; summary: number[]; info: VariableInfo}) {
   const absMin = Math.abs(summary[0])
   const s = summary.map(v => v + absMin)
   const min = s[0]
@@ -60,7 +61,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
           textAlign: 'right',
         }}
       >
-        {formatValue(summary[0])}
+        {formatValue(summary[0], info)}
       </Box>
       <Box sx={{backgroundColor: color.base, height: 10, position: 'relative', width: '100%'}}>
         <Box
@@ -94,7 +95,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             left: summary[2] == null ? '50%' : ((s[2] - min) / denom) * 100 + '%',
           }}
         >
-          {formatValue(summary[2])}
+          {formatValue(summary[2], info)}
         </Box>
         <Box
           sx={{
@@ -107,7 +108,7 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
             left: value == null ? '50%' : ((value + absMin - min) / denom) * 100 + '%',
           }}
         >
-          {formatValue(value)}
+          {formatValue(value, info)}
         </Box>
       </Box>
       <Box
@@ -116,30 +117,40 @@ function SummaryBar({value, summary}: {value: number; summary: number[]}) {
           width: 100,
         }}
       >
-        {formatValue(summary[5])}
+        {formatValue(summary[5], info)}
       </Box>
     </Stack>
   )
 }
-function SummaryRow({label, value, summary}: {label?: string; value: number; summary: number[]}) {
+function SummaryRow({
+  label,
+  value,
+  summary,
+  info,
+}: {
+  label?: string
+  value: number
+  summary: number[]
+  info: VariableInfo
+}) {
   return label ?
       <TableRow>
         <TableCell component="th" scope="row" sx={{width: 270}}>
           {label}
         </TableCell>
         <TableCell>
-          <SummaryBar value={value} summary={summary} />
+          <SummaryBar value={value} summary={summary} info={info} />
         </TableCell>
       </TableRow>
     : <TableRow>
         <TableCell>
-          <SummaryBar value={value} summary={summary} />
+          <SummaryBar value={value} summary={summary} info={info} />
         </TableCell>
       </TableRow>
 }
 
 export function ProfileDisplay() {
-  const {info, meta, variable_types, variables, categories} = useContext(DataContext) as Resources
+  const {info, meta, variable_types, variables} = useContext(DataContext) as Resources
   const data = useContext(FullDataContext)
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
@@ -158,6 +169,7 @@ export function ProfileDisplay() {
   const summaries = useMemo(() => {
     const formulas: {[key: string]: string} = {}
     variable_types.dollar.forEach(({id}) => (formulas[id] = numberSummary(id)))
+    variable_types.percent.forEach(({id}) => (formulas[id] = numberSummary(id)))
     variable_types.value.forEach(({id}) => (formulas[id] = numberSummary(id)))
     const summaries = data.ungroup().filter(`d.${info.refs.time} === ${time}`).rollup(formulas).objects()[0] as {
       [key: string]: number[]
@@ -192,6 +204,7 @@ export function ProfileDisplay() {
                             key={cat.id}
                             label={cat.labels.category}
                             summary={summaries[cat.id]}
+                            info={variables[id]}
                           />
                         ))}
                       </TableBody>
@@ -207,7 +220,7 @@ export function ProfileDisplay() {
                 <CardContent sx={{p: 0, pb: '0px !important'}}>
                   <Table size="small">
                     <TableBody>
-                      <SummaryRow value={values[id]} summary={summaries[id]} />
+                      <SummaryRow value={values[id]} summary={summaries[id]} info={variables[id]} />
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -218,17 +231,7 @@ export function ProfileDisplay() {
       })
       return {sections, section}
     }
-  }, [
-    variables,
-    summaries,
-    view.profile,
-    view.profile_section,
-    categories,
-    data,
-    info.refs.entity,
-    info.refs.time,
-    time,
-  ])
+  }, [variables, summaries, view.profile, view.profile_section, data, info.refs.entity, info.refs.time, time])
   const setProfile = (entity: string) => viewAction({key: 'profile', value: entity})
   const clearProfile = () => setProfile('')
   return (
@@ -294,9 +297,6 @@ export function ProfileDisplay() {
                 renderInput={params => <TextField {...params} label="Variable Section" />}
                 sx={{pt: 3}}
               />
-              <Stack spacing={1} sx={{overflowY: 'auto', mb: 1}}>
-                <Stack spacing={1}>{Object.values(summaryDisplay.section)}</Stack>
-              </Stack>
               <Table size="small">
                 <TableBody>
                   <TableRow>
@@ -413,6 +413,9 @@ export function ProfileDisplay() {
                   </TableRow>
                 </TableBody>
               </Table>
+              <Stack spacing={1} sx={{overflowY: 'auto', mb: 1}}>
+                <Stack spacing={1}>{Object.values(summaryDisplay.section)}</Stack>
+              </Stack>
             </>
           : <Box sx={{p: 5, textAlign: 'center'}}>
               <Typography>No data available.</Typography>

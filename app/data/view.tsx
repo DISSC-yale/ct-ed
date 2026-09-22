@@ -24,6 +24,7 @@ export type ViewDef = {
   max_time: string
   profile: string
   profile_section: string
+  advanced: boolean
 }
 
 type Operator = 'none' | '-' | '*' | '/'
@@ -47,7 +48,7 @@ export type ViewAction =
       value: string
     }
   | {key: 'time_agg'; value: TimeAgg}
-  | {key: 'lock_range' | 'entity_center'; value: boolean}
+  | {key: 'lock_range' | 'entity_center' | 'advanced'; value: boolean}
   | {key: 'min_time' | 'max_time'; value: string}
   | {key: 'entities'; value: {[index: string]: boolean}}
 
@@ -69,9 +70,10 @@ const defaultView: ViewDef = {
   max_time: '',
   profile: '',
   profile_section: 'sp',
+  advanced: false,
 }
 const defaultXY = {x: defaultView.x.toString(), y: defaultView.y.toString()}
-const binaryParams = {lock_range: true, entity_center: true}
+const binaryParams = {lock_range: true, entity_center: true, advanced: true}
 
 const defaultParams = {...defaultView}
 export function viewToString(view: ViewDef) {

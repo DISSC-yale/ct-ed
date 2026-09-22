@@ -205,11 +205,11 @@ export default function Plot({
         '<tr><td>' +
         (xCateogry === 'x' ? view.x.label() : view.x.category.variables[xCateogry].labels.full) +
         '</td><td><strong>' +
-        formatValue(value[0], view.x) +
+        formatValue(value[0], variables[view.x.id]) +
         '</strong></td></tr><tr><td>' +
         (yCateogry === 'y' ? view.y.label() : view.y.category.variables[yCateogry].labels.full) +
         '</td><td><strong>' +
-        formatValue(value[1], view.y) +
+        formatValue(value[1], variables[view.y.id]) +
         '</strong></td></tr></table></div>'
       )
     },

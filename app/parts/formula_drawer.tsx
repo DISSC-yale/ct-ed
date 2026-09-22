@@ -1,10 +1,11 @@
 import {Close} from '@mui/icons-material'
-import {Box, Button, Card, CardActions, CardContent, CardHeader, Drawer, IconButton} from '@mui/material'
+import {Box, Button, Card, CardActions, CardContent, CardHeader, Drawer, IconButton, Typography} from '@mui/material'
 import {useCallback, useContext, useEffect, useState} from 'react'
 import FormulaMenu from '../data/formula_menu'
 import {FormulaEditor} from '../data/view'
 import {background} from '../data/load'
 import type {Formula} from '../data/formula'
+import {FormulaGraphDisplay} from './formula_graph_display'
 
 let resizeAnimationFrame = -1
 const heightTracker = {value: 0}
@@ -105,11 +106,17 @@ export function FormulaDrawer({
               </IconButton>
             }
             title="Entitlement Formula"
+            subheader={
+              <Typography variant="caption" sx={{opacity: 0.75}}>
+                These apply to the "Computed" variables, which are version of the ECS formula components.
+              </Typography>
+            }
           />
           <CardContent sx={{pb: 0, pt: 0, height: '100%', overflow: 'auto'}}>
             <FormulaMenu />
           </CardContent>
           <CardActions sx={{justifyContent: 'flex-end', p: 0}}>
+            <FormulaGraphDisplay />
             <Button
               onClick={() => {
                 editFormula({key: 'set', value: (background.formula as Formula).reset()})

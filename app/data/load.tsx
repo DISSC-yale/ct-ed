@@ -3,7 +3,7 @@
 import {ColumnTable, loadJSON} from 'arquero'
 import {createContext, useEffect, useState} from 'react'
 import {Backdrop, Stack, Typography} from '@mui/material'
-import {initCustomFunctions, type Categories, type VariableInfo, type VariableTypes} from './variable'
+import {initCustomFunctions, type Categories, type Category, type VariableInfo, type VariableTypes} from './variable'
 import {Formula, type FormulaSpec} from './formula'
 import {deflatorTable} from '../utils'
 
@@ -16,6 +16,7 @@ export type Entities = {[index: string]: {id: string; name: string; color: strin
 export type Metadata = {
   updated: string
   types: {[key: string]: VariableTypes}
+  select_variables: {section: string; variables: string[]}[]
   adjusters: {[key: string]: {label: string; applies_to: string; variable: string; function: string}}
   formula: FormulaSpec
   variable_parts: {[key: string]: {label: string}}
@@ -26,6 +27,7 @@ export type Resources = {
   data: ColumnTable
   variables: {[key: string]: VariableInfo}
   categories: Categories
+  selectCategories: Categories
   variable_types: {[key: string]: VariableInfo[]}
   info: Info
   selectEntities: {[key: string]: boolean}
@@ -35,6 +37,7 @@ export const DataContext = createContext<Resources | null>(null)
 
 const dollarVars =
   /^(?:sp__|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|median|endo|region|full|entitlement|prior|change|base_formula|phase)|computed__(?:actual|mhi_agg|endo|engl_pc|engl_ag|region|grant|full|funding|entitlement|change|base_aid$))/
+const percents = /_pct|_rate/
 const firstLetters = /\b(\w)/g
 type partLabels = {[key: string]: {label: string}}
 function translatePart(p: string, parts: partLabels) {
@@ -69,6 +72,7 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
   if (data && meta) {
     const variables: {[key: string]: VariableInfo} = {}
     const categories: Categories = {}
+    const selCats: Categories = {}
     const variable_types: {[key: string]: VariableInfo[]} = {}
     const info: Info = {
       refs: {entity: '', time: ''},
@@ -83,9 +87,15 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
         info.refs.entity = col
       }
     })
+    const selectMap: Map<string, [string, Category[]]> = new Map()
+    meta.select_variables.forEach(s => {
+      s.variables.forEach(v => selectMap.set(v, [s.section, []]))
+    })
+    const selectCheck = new RegExp('^(?:' + [...selectMap.keys()].join('|') + ')')
     background.formula = new Formula(meta.formula, info.refs)
     let newData = background.formula.run([], data, background.formula.values, true)
-    newData.columnNames().forEach(id => {
+    const columns = newData.columnNames()
+    columns.forEach(id => {
       const [section, variable, category] = id.split('__')
       const {variable_parts} = meta
       const category_id = `${section}__${variable}`
@@ -94,6 +104,7 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
         type:
           id in meta.types ? meta.types[id]
           : dollarVars.test(id) ? 'dollar'
+          : percents.test(id) ? 'percent'
           : 'value',
         parts: {section, variable, category},
         labels: {
@@ -114,12 +125,40 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
           firstInstance: v,
         }
       const cat = categories[category_id]
+      if (selectCheck.test(id)) {
+        for (const pair of selectMap) {
+          if (columns.includes(pair[0]) ? id === pair[0] : id.startsWith(pair[0])) {
+            const selectCat = pair[1][0]
+            const selectCatId = `${selectCat}__${variable}`
+            if (!(selectCatId in selCats))
+              selCats[selectCatId] = {
+                key: category_id,
+                parts: {section, variable},
+                labels: {section: selectCat, variable: v.labels.variable},
+                levels: [],
+                variables: {[id]: v},
+                searchString: '',
+                firstInstance: v,
+              }
+            const selCat = selCats[selectCatId]
+            pair[1][1].push(selCat)
+            if (!(id in selCat.variables)) selCat.variables[id] = v
+            if (v.parts.category) selCat.levels.push(v.parts.category)
+            if (selectCat.startsWith('School') || selectCat.startsWith('Special')) {
+              selCat.labels.variable = `${v.labels.section}, ${v.labels.variable}`
+            }
+            break
+          }
+        }
+      }
       v.category = cat
       if (!(id in cat.variables)) cat.variables[id] = v
       if (v.parts.category) cat.levels.push(v.parts.category)
       if (!(v.type in variable_types)) variable_types[v.type] = []
       variable_types[v.type].push(v)
     })
+    const selectCategories: Categories = {}
+    selectMap.forEach(e => e[1].forEach(c => (selectCategories[c.key] = c)))
     newData = newData.lookup(info.deflator, info.refs.time)
     if ('time' in variable_types) {
       const id = variable_types.time[0].id
@@ -144,6 +183,7 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
       data: newData,
       variables,
       categories,
+      selectCategories,
       variable_types,
       info,
       selectEntities,

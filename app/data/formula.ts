@@ -122,7 +122,7 @@ export class Formula {
     const step = this.steps.get(name) as FormulaStep
     if (name in updated) return step
     updated[name] = true
-    const isPrior = name.endsWith('_prior')
+    const isPrior = name.startsWith('prior_')
     let data = state.data
     if (!isPrior) {
       step.parents.forEach(parent => {

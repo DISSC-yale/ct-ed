@@ -87,6 +87,7 @@ if __name__ == "__main__":
         + ("__" + parts[2 if len(parts) == 3 else 3] if len(parts) > 2 else "")
         for parts in data.columns.str.replace("input__", "ecs__")
         .str.replace("computed__", "ecs__")
+        .str.replace("prior_year", "prior")
         .str.replace("__ecs_", "__")
         .str.replace("rev__pct_", "rev__pct__")
         .str.replace("sped__ammount", "sp__sped")
@@ -102,6 +103,21 @@ if __name__ == "__main__":
         .str.replace("___", "__")
         .str.split("__", n=3)
     ]
+
+    # add in prior year variables
+    ids = ["general__district_code", "general__fiscal_year"]
+    priors = [
+        "ecs__resident_students",
+        "ecs__frpl_students",
+        "ecs__concentrated_poverty_students",
+        "ecs__ell_students",
+    ]
+    data_prior = data[[*ids, *priors]]
+    data_prior.loc[:, "general__fiscal_year"] = data_prior["general__fiscal_year"] + 1
+    data_prior.columns = [
+        col + "_prior" if col in priors else col for col in data_prior.columns
+    ]
+    data = data.merge(data_prior, how="left", on=ids)
 
     # write web data
     with gzip.open(f"public/data.json.gz", "wb") as file:

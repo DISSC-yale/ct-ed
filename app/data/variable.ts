@@ -9,6 +9,7 @@ export type VariableTypes =
   | 'binary'
   | 'categorical'
   | 'dollar'
+  | 'percent'
   | 'value'
 
 export type VariableInfo = {
