@@ -69,7 +69,7 @@ const defaultView: ViewDef = {
   min_time: '',
   max_time: '',
   profile: '',
-  profile_section: 'sp',
+  profile_section: 'rev',
   advanced: false,
 }
 const defaultXY = {x: defaultView.x.toString(), y: defaultView.y.toString()}

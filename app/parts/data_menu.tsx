@@ -23,22 +23,21 @@ import VariableControls from '../data/variable_controls'
 import {SingleSelect, type SelectOption} from './selector_single'
 
 const categoryRank = {
-  rev: 1,
-  sp: 2,
-  ecs: 3,
-  computed: 4,
-  enrollment: 5,
-  sbac: 6,
-  grad4: 7,
   Revenue: 1,
   Expenditures: 2,
+  Spending: 2,
+  'Education Cost Sharing': 3,
   'ECS Formula Components': 3,
   'Computed Formula Components': 4,
+  Computed: 4,
   'School Demographic and Performance': 5,
-  'Special Education': 6,
+  Enrollment: 5,
+  'Smarter Balanced Assessment': 6,
+  'Graduation 4-Year': 7,
+  'Special Education': 8,
 }
-function sectionOrder(section: string) {
-  return categoryRank[section as 'rev'] || 99
+export function sectionOrder(section: string) {
+  return categoryRank[section as 'Revenue'] || 99
 }
 
 export function DataMenu() {
@@ -46,21 +45,13 @@ export function DataMenu() {
   const viewAction = useContext(ViewActionContext)
   const full = useContext(DataContext) as Resources
   const allVariables = useMemo(() => {
-    return Object.values(full.categories)
-      .map(cat => {
-        cat.searchString = JSON.stringify({key: cat.key, ...cat.parts, ...cat.labels})
-        return cat
-      })
-      .sort((a, b) => sectionOrder(a.parts.section) - sectionOrder(b.parts.section))
-  }, [full.categories])
-  const selectVariables = useMemo(() => {
-    return Object.values(full.selectCategories)
+    return Object.values(full[view.advanced ? 'categories' : 'selectCategories'])
       .map(cat => {
         cat.searchString = JSON.stringify({key: cat.key, ...cat.parts, ...cat.labels})
         return cat
       })
       .sort((a, b) => sectionOrder(a.labels.section) - sectionOrder(b.labels.section))
-  }, [full.selectCategories])
+  }, [full.categories, full.selectCategories, view.advanced])
   const lineOptions = useMemo(() => {
     const options: {[key: string]: SelectOption} = {}
     ;[
@@ -120,7 +111,7 @@ export function DataMenu() {
             : <VariableControls
                 name="y"
                 variable={view.y}
-                allVariables={selectVariables}
+                allVariables={allVariables}
                 categories={full.selectCategories}
               />
             }

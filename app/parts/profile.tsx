@@ -24,6 +24,7 @@ import {entityOptions, filterOptions, type EntityOption} from './filter_entities
 import {FullDataContext, ViewActionContext, ViewContext, type ViewDef} from '../data/view'
 import {formatValue} from '../utils'
 import type {VariableInfo} from '../data/variable'
+import {sectionOrder} from './data_menu'
 
 function numberSummary(v: string) {
   return `[min(d.${v}), quantile(d.${v}, .25), median(d.${v}), mean(d.${v}), quantile(d.${v}, .75), max(d.${v})]`
@@ -149,8 +150,10 @@ function SummaryRow({
       </TableRow>
 }
 
+const numericTypes = {dollar: true, percent: true, value: true}
+
 export function ProfileDisplay() {
-  const {info, meta, variable_types, variables} = useContext(DataContext) as Resources
+  const {info, meta, variables, categories, selectCategories} = useContext(DataContext) as Resources
   const data = useContext(FullDataContext)
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
@@ -168,14 +171,21 @@ export function ProfileDisplay() {
   )
   const summaries = useMemo(() => {
     const formulas: {[key: string]: string} = {}
-    variable_types.dollar.forEach(({id}) => (formulas[id] = numberSummary(id)))
-    variable_types.percent.forEach(({id}) => (formulas[id] = numberSummary(id)))
-    variable_types.value.forEach(({id}) => (formulas[id] = numberSummary(id)))
+    const vars = Object.values(view.advanced ? categories : selectCategories).sort(
+      (a, b) => sectionOrder(a.labels.section) - sectionOrder(b.labels.section),
+    )
+    vars.forEach(cat => {
+      Object.values(cat.variables).forEach(({id, type}) => {
+        if (type in numericTypes) {
+          formulas[id] = numberSummary(id)
+        }
+      })
+    })
     const summaries = data.ungroup().filter(`d.${info.refs.time} === ${time}`).rollup(formulas).objects()[0] as {
       [key: string]: number[]
     }
     return summaries
-  }, [variable_types, data, time, info.refs.time])
+  }, [categories, selectCategories, data, time, info.refs.time, view.advanced])
   const summaryDisplay = useMemo(() => {
     if (view.profile) {
       const values = data
@@ -183,40 +193,51 @@ export function ProfileDisplay() {
         .select(Object.keys(summaries))
         .objects()[0] as {[key: string]: number}
       if (!values) return
-      const sections: {[key: string]: {id: string; label: string}} = {}
+      const sections: {[key: string]: string} = {}
+      const catMap: {[key: string]: string} = {}
       const section: {[key: string]: ReactElement} = {}
+      const cats = view.advanced ? categories : selectCategories
+      Object.values(cats).forEach(cat => {
+        const section = cat.labels.section
+        sections[section] = cat.parts.section
+        catMap[cat.parts.section] = section
+      })
       Object.keys(values).forEach(id => {
-        const {parts, labels, category} = variables[id]
-        sections[parts.section] = {id: parts.section, label: labels.section}
-        if (category && parts.section === view.profile_section) {
+        const {parts} = variables[id]
+        const category_id = `${parts.section}__${parts.variable}`
+        const category = cats[category_id]
+        if (category && catMap[parts.section] === catMap[view.profile_section]) {
           if (parts.category) {
-            const category_id = parts.section + parts.variable
             if (!(category_id in section)) {
+              const rows: ReactElement[] = []
+              Object.values(category.variables).forEach(({id, labels}) => {
+                if (id in summaries) {
+                  rows.push(
+                    <SummaryRow
+                      value={values[id]}
+                      key={id}
+                      label={labels.category}
+                      summary={summaries[id]}
+                      info={variables[id]}
+                    />,
+                  )
+                }
+              })
               section[category_id] = (
                 <Card key={id} sx={{p: 0}}>
-                  <CardHeader title={<Typography variant="h6">{labels.variable}</Typography>} />
+                  <CardHeader title={<Typography variant="h6">{category.labels.variable}</Typography>} />
                   <CardContent sx={{p: 0, pb: '0px !important'}}>
                     <Table size="small">
-                      <TableBody>
-                        {Object.values(category.variables).map(cat => (
-                          <SummaryRow
-                            value={values[cat.id]}
-                            key={cat.id}
-                            label={cat.labels.category}
-                            summary={summaries[cat.id]}
-                            info={variables[id]}
-                          />
-                        ))}
-                      </TableBody>
+                      <TableBody>{rows}</TableBody>
                     </Table>
                   </CardContent>
                 </Card>
               )
             }
-          } else {
+          } else if (id in summaries) {
             section[id] = (
               <Card key={id} sx={{p: 0}}>
-                <CardHeader title={<Typography variant="h6">{labels.variable}</Typography>} />
+                <CardHeader title={<Typography variant="h6">{category.labels.variable}</Typography>} />
                 <CardContent sx={{p: 0, pb: '0px !important'}}>
                   <Table size="small">
                     <TableBody>
@@ -229,7 +250,7 @@ export function ProfileDisplay() {
           }
         }
       })
-      return {sections, section}
+      return {sections, catMap, section}
     }
   }, [variables, summaries, view.profile, view.profile_section, data, info.refs.entity, info.refs.time, time])
   const setProfile = (entity: string) => viewAction({key: 'profile', value: entity})
@@ -237,7 +258,7 @@ export function ProfileDisplay() {
   return (
     <>
       <Button variant="text" color="inherit" onClick={() => setProfile(allEntities[0].key)}>
-        Profile
+        District Profile
       </Button>
       <Dialog
         open={!!view.profile}
@@ -290,9 +311,11 @@ export function ProfileDisplay() {
               <Autocomplete
                 size="small"
                 fullWidth
-                options={Object.values(summaryDisplay.sections)}
-                value={summaryDisplay.sections[view.profile_section]}
-                onChange={(_, selection) => viewAction({key: 'profile_section', value: selection.id})}
+                options={Object.keys(summaryDisplay.sections)}
+                value={summaryDisplay.catMap[view.profile_section]}
+                onChange={(_, selection) =>
+                  viewAction({key: 'profile_section', value: summaryDisplay.sections[selection]})
+                }
                 disableClearable
                 renderInput={params => <TextField {...params} label="Variable Section" />}
                 sx={{pt: 3}}
