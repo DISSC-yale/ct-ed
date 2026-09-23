@@ -197,16 +197,17 @@ export function ProfileDisplay() {
       const catMap: {[key: string]: string} = {}
       const section: {[key: string]: ReactElement} = {}
       const cats = view.advanced ? categories : selectCategories
-      Object.values(cats).forEach(cat => {
-        const section = cat.labels.section
-        sections[section] = cat.parts.section
-        catMap[cat.parts.section] = section
+      Object.values(cats).forEach(({parts, labels}) => {
+        const section = labels.section
+        sections[section] = parts.section
+        catMap[parts.section] = section
+        catMap[`${parts.section}__${parts.variable}`] = section
       })
       Object.keys(values).forEach(id => {
         const {parts} = variables[id]
         const category_id = `${parts.section}__${parts.variable}`
         const category = cats[category_id]
-        if (category && catMap[parts.section] === catMap[view.profile_section]) {
+        if (category && catMap[category_id] === catMap[view.profile_section]) {
           if (parts.category) {
             if (!(category_id in section)) {
               const rows: ReactElement[] = []
