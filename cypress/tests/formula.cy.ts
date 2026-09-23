@@ -13,7 +13,7 @@ describe('tests formula', () => {
     cy.fixture('../../metadata.json', 'utf8').then(async content => {
       const meta = JSON.parse(content) as Metadata
       const formula = new Formula(meta.formula, {
-        entity: 'general__district_code',
+        entity: 'general__district',
         time: 'general__fiscal_year',
       })
       const newData = formula.run(

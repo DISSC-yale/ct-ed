@@ -58,7 +58,7 @@ export function FilterEntities() {
         size="small"
         onChange={(_, selection) => {
           const value: {[index: string]: boolean} = {}
-          selection.forEach(country => (value[country.key] = true))
+          selection.forEach(entity => (value[entity.key] = true))
           viewAction({key: 'entities', value})
         }}
       ></Autocomplete>
@@ -66,7 +66,7 @@ export function FilterEntities() {
         size="small"
         variant="contained"
         onClick={() => viewAction({key: 'entities', value: selectEntities})}
-        aria-label="select all countries"
+        aria-label="select all districts"
       >
         All
       </Button>

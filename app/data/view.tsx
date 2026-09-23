@@ -56,7 +56,7 @@ const defaultView: ViewDef = {
   lock_range: false,
   x: new Variable('general__fiscal_year'),
   y: new Variable('computed__entitlement-secs__entitlement'),
-  lines: 'general__district_code',
+  lines: 'general__district',
   color: '',
   symbol: '',
   x_panels: '',
@@ -232,8 +232,6 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
   }
   const [view, viewAction] = useReducer(editView, urlParamsToView(urlParams))
 
-  const [calculated, setCalculated] = useState(data)
-
   const editParams = (state: ParamValues, action: FormulaEditAction) => {
     if (action.key === 'set') {
       const newState = {...action.value}
@@ -248,9 +246,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     return {...state}
   }
   const [formulaParams, formulaAction] = useReducer(editParams, formula.values)
-  useEffect(() => {
-    setCalculated(calculated => formula.run([], calculated, formulaParams))
-  }, [formula, formulaParams])
+  const calculated = useMemo(() => formula.run([], data, formulaParams), [formula, formulaParams])
 
   const selected = useMemo(() => {
     const entity_id = info.refs.entity

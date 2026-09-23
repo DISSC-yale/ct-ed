@@ -2,7 +2,7 @@
   "updated": "2026-9-11",
   "types": {
     "general__fiscal_year": "time",
-    "general__district_code": "entity_id",
+    "general__district": "entity_id",
     "general__district_name": "entity_name",
     "ecs__psd_flag": "binary",
     "ecs__alliance_district_flag": "binary",
@@ -165,6 +165,12 @@
       }
     },
     "param_history": {
+      "2018": {"ell": 0.15},
+      "2019": {"ell": 0.15},
+      "2020": {"ell": 0.15},
+      "2021": {"underfunded": 0.1066, "overfunded": 0.0833, "ell": 0.15},
+      "2022": {"underfunded": 0.1066, "overfunded": 0.0833},
+      "2023": {"underfunded": 0.1667, "overfunded": 0.0833},
       "2024": {"underfunded": 0.2, "overfunded": 0.1429, "final_digits": 0},
       "2025": {"underfunded": 0.565, "overfunded": 0}
     },

@@ -36,8 +36,8 @@ export type Resources = {
 export const DataContext = createContext<Resources | null>(null)
 
 const dollarVars =
-  /^(?:sp__|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|median|endo|region|full|entitlement|prior|change|base_formula|phase)|computed__(?:actual|mhi_agg|endo|engl_pc|engl_ag|region|grant|full|funding|entitlement|change|base_aid$))/
-const percents = /_pct|_rate/
+  /^(?:sp__(?:total|ppe|exp)|ppe__|tot__|rev__rev|ppo__|sped__|ecs__(?:actual|engl_3|engl_per|median|endo|region|full|entitlement|prior|change|base_formula|phase)|computed__(?:actual|mhi_agg|endo|engl_pc|engl_ag|region|grant|full|funding|entitlement|change|base_aid$))/
+const percents = /_pct|_percent|_rate/
 const firstLetters = /\b(\w)/g
 type partLabels = {[key: string]: {label: string}}
 function translatePart(p: string, parts: partLabels) {

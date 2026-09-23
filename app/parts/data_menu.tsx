@@ -48,7 +48,7 @@ export function DataMenu() {
   const allVariables = useMemo(() => {
     return Object.values(full.categories)
       .map(cat => {
-        cat.searchString = JSON.stringify({...cat.parts, ...cat.labels})
+        cat.searchString = JSON.stringify({key: cat.key, ...cat.parts, ...cat.labels})
         return cat
       })
       .sort((a, b) => sectionOrder(a.parts.section) - sectionOrder(b.parts.section))
@@ -56,7 +56,7 @@ export function DataMenu() {
   const selectVariables = useMemo(() => {
     return Object.values(full.selectCategories)
       .map(cat => {
-        cat.searchString = JSON.stringify({...cat.parts, ...cat.labels})
+        cat.searchString = JSON.stringify({key: cat.key, ...cat.parts, ...cat.labels})
         return cat
       })
       .sort((a, b) => sectionOrder(a.labels.section) - sectionOrder(b.labels.section))

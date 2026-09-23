@@ -207,11 +207,11 @@ export function initCustomFunctions() {
   addFunction('row_max', (arr: number[]) => (arr.length ? statistics.max(arr) : null), {override: true})
   addFunction('row_sum', (arr: number[]) => (arr.length ? statistics.sum(arr) : null), {override: true})
   addFunction('row_mean', (arr: number[]) => (arr.length ? statistics.mean(arr) : null), {override: true})
-  addFunction('row_median', (arr: number[]) => (arr.length ? statistics.median(arr) : null), {override: true})
+  addFunction('row_median', (arr: number[]) => (arr.length ? statistics.median(arr.sort()) : null), {override: true})
   addFunction(
     'limit',
     (x: number | undefined, max: number) =>
-      'undefined' === typeof x ? null
+      x == null ? null
       : x > max ? x
       : max,
     {override: true},
@@ -219,7 +219,7 @@ export function initCustomFunctions() {
   addFunction(
     'round',
     (x: number | undefined, digits: number) =>
-      'undefined' === typeof x ? null : +(x + Number.EPSILON).toFixed(digits),
+      x == null ? null : +(x + Number.EPSILON).toFixed(Math.min(100, Math.max(0, digits))),
     {
       override: true,
     },

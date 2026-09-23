@@ -48,9 +48,10 @@ if __name__ == "__main__":
         file.write(json.dumps(metadata, separators=(",", ":")).encode())
 
     # standardize variable names
-    data.drop(columns=["town_code", "sp__ppe_total", "district_name"], inplace=True)
+    data.drop(columns=["town_code", "district_name"], inplace=True)
     data.rename(
         columns={
+            "district_code": "district",
             "enrollment_total": "enrollment__total",
             "ppe_ext__ppe_total": "sp__ppe_total",
             "computed__ecs_entitlement_with_alliance_hh": "computed__entitlement",
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     ]
 
     # add in prior year variables
-    ids = ["general__district_code", "general__fiscal_year"]
+    ids = ["general__district", "general__fiscal_year"]
     priors = [
         "ecs__resident_students",
         "ecs__frpl_students",

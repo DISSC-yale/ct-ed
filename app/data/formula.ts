@@ -13,7 +13,7 @@ type ActiveParams = {[key: string]: number | string}
 export type FormulaSpec = {
   section: string
   params: FormulaParams
-  param_history: {[key: string]: ActiveParams}
+  param_history: {[key: string]: ParamValues}
   steps: {[key: string]: string}
 }
 type FormulaStep = {params: string[]; parents: string[]; children: string[]; equation: string}
@@ -24,7 +24,8 @@ const listSep = /,\s*/g
 
 export class Formula {
   section: string
-  param_history: {[key: string]: ActiveParams}
+  param_history: {[key: string]: ParamValues}
+  param_offsets: {[key: string]: ParamValues}
   param_specs: FormulaParams
   params: ActiveParams
   steps: Map<string, FormulaStep>
@@ -36,6 +37,7 @@ export class Formula {
   constructor(spec: Partial<FormulaSpec>, refs?: {entity: string; time: string}) {
     this.section = spec.section || ''
     this.param_history = spec.param_history ? spec.param_history : {}
+    this.param_offsets = JSON.parse(JSON.stringify(this.param_history))
     this.param_specs = spec.params ? JSON.parse(JSON.stringify(spec.params)) : {}
     this.params = {}
     this.values = {}
@@ -57,6 +59,24 @@ export class Formula {
         : param.value
       param.used_by = []
       this.values[name] = Array.isArray(param.value) ? JSON.parse(JSON.stringify(param.value)) : param.value
+    })
+    Object.keys(this.param_history).forEach(time => {
+      const p = this.param_history[time]
+      const offsets = this.param_offsets[time]
+      Object.keys(p).forEach(name => {
+        if (name in this.values) {
+          const value = p[name]
+          if (Array.isArray(value)) {
+            const current = this.values[name] as number[][]
+            offsets[name] = value.map((pair, i) => {
+              pair[1] = pair[1] - current[i][1]
+              return pair
+            })
+          } else {
+            offsets[name] = value - (this.values[name] as number)
+          }
+        }
+      })
     })
     const steps = spec.steps || {}
     Object.keys(steps).forEach(name => {
@@ -129,11 +149,24 @@ export class Formula {
         if (!updated[parent]) this.appendStep(parent, time, state)
       })
     }
-    if (time in this.param_history) {
+    if (time in this.param_offsets) {
       const params = {...this.values}
-      const historical = this.param_history[time]
+      const historical = this.param_offsets[time]
       Object.keys(historical).forEach(param => {
-        params[param] = historical[param] as number
+        const offset = historical[param]
+        if (Array.isArray(offset)) {
+          const current = params[param] as number[][]
+          params[param] =
+            current.length === offset.length ?
+              current.map((pair, i) => {
+                const p = [...pair]
+                p[1] = p[1] + offset[i][1]
+                return p
+              })
+            : []
+        } else {
+          params[param] = (params[param] as number) + offset
+        }
       })
       data = data.params({p: params}) as ColumnTable
     } else {
