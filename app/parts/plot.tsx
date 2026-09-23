@@ -29,7 +29,7 @@ function axisMax({max}: {max: number}, adj = 1) {
   return +(max + adj + Number.EPSILON).toFixed(2)
 }
 function assignRanges(range: number[], options: AxisOptions, lock: boolean) {
-  const adj = range[0] > 1900 ? 0 : Math.max(0.01, Math.abs(range[0] - range[1]) * 0.02)
+  const adj = Math.max(0.01, Math.abs(range[0] - range[1]) * 0.01)
   if (lock) {
     options.min = +(range[0] - adj).toFixed(2)
     options.max = +(range[2] + adj).toFixed(2)
@@ -44,7 +44,7 @@ type AxisOptions = {
   axisLabel?: {formatter: (x: number) => string}
 }
 function formatValueAxis(x: number, variable: Variable) {
-  if (variable.category.firstInstance && variable.category.firstInstance.type === 'time') return '' + x
+  if (variable.category.firstInstance && variable.category.firstInstance.type === 'time') return '' + Math.round(x)
   const x_abs = Math.abs(x)
   const ndec = x_abs < 1 ? 3 : 2
   return (
