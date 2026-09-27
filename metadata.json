@@ -124,12 +124,12 @@
         "value": 0.15
       },
       "poverty": {"label": "Poverty portion of free & reduced lunch.", "category": "Poverty", "value": 0.3},
-      "frpl_limit": {"label": "Free & reduced lunch limiter.", "category": "Poverty", "value": 0.6},
+      "frpl_limit": {"label": "Free & reduced lunch limiter.", "category": "Poverty", "value": 0.75},
       "frpl_concentration": {
         "label": "Free & reduced lunch concentration adjustment factor.",
         "category": "Poverty",
         "step_size": 0.1,
-        "value": 0.6
+        "value": 0.05
       },
       "ell": {
         "label": "English language literacy adjustment factor.",
@@ -162,27 +162,95 @@
         "category": "Secondary",
         "step_size": 100,
         "value": 100
+      },
+      "calculated_prior_after": {
+        "label": "Use the calculated rather than provided prior year entitlement after this year.",
+        "category": "Precision",
+        "value": 2022
       }
     },
     "param_history": {
-      "2018": {"ell": 0.15},
-      "2019": {"ell": 0.15},
-      "2020": {"ell": 0.15},
+      "2018": {
+        "underfunded": 0.15,
+        "overfunded": -0.1,
+        "ell": 0.15,
+        "final_digits": 0
+      },
+      "2019": {
+        "overfunded": 0.25,
+        "underfunded": 0.041,
+        "ell": 0.15,
+        "pic": {
+          "reference": "pic_decile",
+          "operator": ">",
+          "value": [
+            [380, 0.06],
+            [340, 0.05],
+            [310, 0.04],
+            [300, 0.03]
+          ]
+        }
+      },
+      "2020": {
+        "underfunded": 0.1066,
+        "overfunded": 0.0833,
+        "ell": 0.15,
+        "pic": {
+          "reference": "pic_decile",
+          "operator": ">",
+          "value": [
+            [380, 0.06],
+            [340, 0.05],
+            [310, 0.04],
+            [300, 0.03]
+          ]
+        }
+      },
       "2021": {"underfunded": 0.1066, "overfunded": 0.0833, "ell": 0.15},
-      "2022": {"underfunded": 0.1066, "overfunded": 0.0833},
-      "2023": {"underfunded": 0.1667, "overfunded": 0.0833},
-      "2024": {"underfunded": 0.2, "overfunded": 0.1429, "final_digits": 0},
-      "2025": {"underfunded": 0.565, "overfunded": 0}
+      "2022": {"underfunded": 0.1066},
+      "2023": {"underfunded": 0.1667},
+      "2024": {"underfunded": 0.2, "final_digits": 0},
+      "2025": {"underfunded": 0.565}
+    },
+    "step_history": {
+      "2018": {
+        "total_need_students": "d.resident_students+s.poverty+s.ell_students+round(s.poverty_concentrated_adj, p.digits)",
+        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "grant_adjustment": "s.fully_funded_grant-(d.actual_fy2017*.78)",
+        "entitlement": "s.funding_adjustment+(d.actual_fy2017*.78)"
+      },
+      "2019": {
+        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017"
+      },
+      "2020": {
+        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
+        "more_than_last": "s.fully_funded_grant > d.actual_fy2017"
+      },
+      "2021": {
+        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
+        "more_than_last": "s.fully_funded_grant > d.actual_fy2017",
+        "entitlement": "!d.alliance_district_flag ? s.entitlement_no_alliance : row_max(d.actual_fy2017, s.entitlement_no_alliance)"
+      },
+      "2022": {
+        "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
+        "more_than_last": "s.fully_funded_grant > d.actual_fy2017"
+      }
     },
     "steps": {
       "prior_entitlement": "s.entitlement|d.prior_entitlement",
       "poverty": "round(d.frpl_students*p.need, p.digits)",
       "resident_students": "round(d.resident_students*p.resident, p.digits)",
       "high_poverty": "round(limit(d.frpl_students-s.resident_students, 0)*p.excess_resident, p.digits)",
-      "poverty_portion": "round(d.frpl_students/d.resident_students, p.digits)",
-      "poverty_limit": "s.poverty_portion > p.frpl_limit ? s.poverty_portion*p.frpl_limit : 0",
-      "poverty_concentrated": "round(d.resident_students*s.poverty_limit, p.digits)",
-      "poverty_concentrated_adj": "round(s.poverty_concentrated*p.frpl_concentration, p.digits)",
+      "poverty_portion": "d.frpl_students/d.resident_students",
+      "poverty_limit": "s.poverty_portion > p.frpl_limit ? s.poverty_portion-p.frpl_limit : 0",
+      "poverty_concentrated": "d.resident_students*s.poverty_limit",
+      "poverty_concentrated_adj": "s.poverty_concentrated*p.frpl_concentration",
       "ell_students": "round(d.ell_students*p.ell, p.digits)",
       "frpl_students": "round(d.frpl_students*p.need, p.digits)",
       "total_need_students": "d.resident_students+s.poverty+s.high_poverty+s.ell_students",
@@ -199,7 +267,7 @@
       "base_aid": "round(s.total_need_students*s.base_aid_ratio_final*p.foundation, p.dollar_digits)",
       "fully_funded_grant": "s.regional_bonus+s.endowed_academy_bonus+s.base_aid",
       "full_grant_harm_held": "!d.alliance_district_flag ? s.fully_funded_grant : row_max(d.actual_fy2017, s.prior_entitlement, s.fully_funded_grant)",
-      "grant_adjustment": "limit(s.fully_funded_grant-s.prior_entitlement, 0)",
+      "grant_adjustment": "s.fully_funded_grant-s.prior_entitlement",
       "more_than_last": "s.fully_funded_grant > s.prior_entitlement",
       "funding_adjustment": "round(s.grant_adjustment*(s.more_than_last ? p.underfunded : p.overfunded), p.final_digits)",
       "entitlement_no_alliance": "s.funding_adjustment+s.prior_entitlement",

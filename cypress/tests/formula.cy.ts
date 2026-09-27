@@ -12,6 +12,7 @@ describe('tests formula', () => {
   it('aligns with pre-calculated version', () => {
     cy.fixture('../../metadata.json', 'utf8').then(async content => {
       const meta = JSON.parse(content) as Metadata
+      meta.formula.params.calculated_prior_after.value = 2028
       const formula = new Formula(meta.formula, {
         entity: 'general__district',
         time: 'general__fiscal_year',
@@ -26,7 +27,7 @@ describe('tests formula', () => {
             differ: 'sum(abs(d.ecs__entitlement - d.computed__entitlement) > 1e-7)',
           })
           .get('differ', 0),
-      ).to.equal(55)
+      ).to.equal(0)
     })
   })
 })

@@ -181,7 +181,7 @@ export function ProfileDisplay() {
         }
       })
     })
-    const summaries = data.ungroup().filter(`d.${info.refs.time} === ${time}`).rollup(formulas).objects()[0] as {
+    const summaries = data.ungroup().filter(`d.${info.refs.time} === ${time}`).rollup(formulas).object(0) as {
       [key: string]: number[]
     }
     return summaries
@@ -191,7 +191,7 @@ export function ProfileDisplay() {
       const values = data
         .filter(`d.${info.refs.entity} === '${view.profile}' & d.${info.refs.time} === ${time}`)
         .select(Object.keys(summaries))
-        .objects()[0] as {[key: string]: number}
+        .object(0) as {[key: string]: number}
       if (!values) return
       const sections: {[key: string]: string} = {}
       const catMap: {[key: string]: string} = {}

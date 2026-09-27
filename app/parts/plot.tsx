@@ -1,7 +1,7 @@
 'use client'
 
 import {use, init, getInstanceByDom} from 'echarts/core'
-import {LineChart, type LineSeriesOption} from 'echarts/charts'
+import {BarChart, LineChart, type BarSeriesOption, type LineSeriesOption} from 'echarts/charts'
 import {
   DatasetComponent,
   GraphicComponent,
@@ -76,8 +76,7 @@ export type Panel = {
   panelEntities: string[]
 }
 export type PlotInput = {
-  series: LineSeriesOption[]
-  fits: LineSeriesOption[]
+  series: (LineSeriesOption | BarSeriesOption)[]
   panels: Panel[]
   range: {x: number[]; y: number[]; panel: number[]}
   varIndices: {[index: string]: number}
@@ -87,10 +86,10 @@ const panelSpacing = {
   textGapY: 50,
   top: 50,
   topNoLabel: 40,
-  left: 95,
+  left: 120,
   bottom: 20,
   gapX: 73,
-  gapY: 85,
+  gapY: 100,
   legendWidth: 0,
 }
 const panelContainer: {current: Panel[]} = {current: []}
@@ -137,6 +136,7 @@ export default function Plot({
       LineChart,
       CanvasRenderer,
       GraphicComponent,
+      BarChart,
     ])
   }, [])
   const {mode} = useColorScheme()
@@ -164,7 +164,9 @@ export default function Plot({
       chart.on('click', params => {
         if (Array.isArray(params.data)) {
           const id = params.data[indices[info.refs.entity]] as string
-          if (id in meta.entities) viewAction({key: 'profile', value: id})
+          if (id in meta.entities) {
+            viewAction({key: 'profile', value: id})
+          }
         }
       })
     window.addEventListener('resize', resize)
@@ -202,15 +204,21 @@ export default function Plot({
           value[indices[info.refs.time]] +
           '</strong></td></tr>'
         : '') +
-        '<tr><td>' +
-        (xCateogry === 'x' ? view.x.label() : view.x.category.variables[xCateogry].labels.full) +
-        '</td><td><strong>' +
-        formatValue(value[0], variables[view.x.id]) +
-        '</strong></td></tr><tr><td>' +
-        (yCateogry === 'y' ? view.y.label() : view.y.category.variables[yCateogry].labels.full) +
-        '</td><td><strong>' +
-        formatValue(value[1], variables[view.y.id]) +
-        '</strong></td></tr></table></div>'
+        ('string' === typeof value[0] && value[0] === seriesName ?
+          ''
+        : '<tr><td>' +
+          (xCateogry === 'x' ? view.x.label() : view.x.category.variables[xCateogry].labels.full) +
+          '</td><td><strong>' +
+          formatValue(value[0], variables[view.x.id]) +
+          '</strong></td></tr>') +
+        ('string' === typeof value[1] && value[1] === seriesName ?
+          ''
+        : '<tr><td>' +
+          (yCateogry === 'y' ? view.y.label() : view.y.category.variables[yCateogry].labels.full) +
+          '</td><td><strong>' +
+          formatValue(value[1], variables[view.y.id]) +
+          '</strong></td></tr>') +
+        '</table></div>'
       )
     },
     [view, variables, meta.entities, info.refs.entity, info.refs.time],
@@ -220,35 +228,53 @@ export default function Plot({
       const chart = getInstanceByDom(container.current)
       if (chart) {
         if (series.length) {
-          assignRanges(range.x, baseXAxisOptions, view.lock_range)
-          assignRanges(range.y, baseYAxisOptions, view.lock_range)
+          const firstData = (series[0] as {data: number[][]}).data[0]
+          const isBar = firstData && firstData.length && series[0].type === 'bar'
+          const which =
+            isBar ?
+              series[0].name === firstData[0] ?
+                1
+              : 0
+            : 0
+          assignRanges(range.x, baseXAxisOptions, view.lock_range && (!isBar || which === 0))
+          assignRanges(range.y, baseYAxisOptions, view.lock_range && (!isBar || which === 1))
           const darkMode = useMode === 'dark'
           const colors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
           panelSpacing.legendWidth = 0
           let legendName = ''
-          if (view.lines) legendName = variables[view.lines].labels.full
-          if (view.y.multi && view.y.agg === 'none' && view.y.selection.length > 1)
-            legendName += (legendName ? ', ' : '') + view.y.label()
-          if (view.x.multi && view.x.agg === 'none' && view.x.selection.length > 1)
-            legendName += (legendName ? ', ' : '') + view.x.label()
-          if (legendName) {
-            series.forEach(s => {
-              const len = (s.name as string).length
-              if (len > panelSpacing.legendWidth) panelSpacing.legendWidth = len
-            })
-            panelSpacing.legendWidth += 4
-            panelSpacing.legendWidth *= 4.6
+          if (!isBar) {
+            if (view.lines) legendName = variables[view.lines].labels.full
+            if (view.y.multi && view.y.agg === 'none' && view.y.selection.length > 1)
+              legendName += (legendName ? ', ' : '') + view.y.label()
+            if (view.x.multi && view.x.agg === 'none' && view.x.selection.length > 1)
+              legendName += (legendName ? ', ' : '') + view.x.label()
+            if (legendName) {
+              series.forEach(s => {
+                const len = (s.name as string).length
+                if (len > panelSpacing.legendWidth) panelSpacing.legendWidth = len
+              })
+              panelSpacing.legendWidth += 4
+              panelSpacing.legendWidth *= 4.6
+            }
           }
           const frame = container.current.getBoundingClientRect()
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
           panelContainer.current = panels
           const {title, grid} = resizePanels(frame, panels)
           const seriesNames = [...new Set(series.map(s => s.name).sort())]
+          let s = series
+          if (isBar) {
+            s = series.sort((a, b) => {
+              const aData = a.data && a.data.length ? (a.data[0] as number[]) : []
+              const bData = b.data && b.data.length ? (b.data[0] as number[]) : []
+              return (bData ? bData[which] : 0) - (aData ? aData[which] : 0)
+            })
+          }
           chart.setOption(
             {
               darkMode,
               legend: {
-                top: '35',
+                top: '30',
                 align: 'right',
                 right: 'right',
                 orient: 'vertical',
@@ -263,41 +289,62 @@ export default function Plot({
                 backgroundColor: colors.bg + (darkMode ? '60' : ''),
                 borderWidth: 0,
                 axisPointer: {
-                  type: 'line',
+                  type: 'none',
                 },
                 formatter,
                 position: tooltipPlacer,
                 appendToBody: true,
               },
               xAxis: panels.map((_, i) => {
-                return {
-                  type: 'value',
-                  gridIndex: i,
-                  axisLabel: {
-                    formatter: (x: number) => formatValueAxis(x, view.x),
-                  },
-                  ...baseXAxisOptions,
-                }
+                return isBar && which === 1 ?
+                    {
+                      type: 'category',
+                      gridIndex: i,
+                      axisLabel: {
+                        rotate: 90,
+                        overflow: 'truncate',
+                        width: 90,
+                      },
+                      ...baseXAxisOptions,
+                    }
+                  : {
+                      type: 'value',
+                      gridIndex: i,
+                      axisLabel: {
+                        formatter: (x: number) => formatValueAxis(x, view.x),
+                      },
+                      ...baseXAxisOptions,
+                    }
               }),
               yAxis: panels.map((_, i) => {
-                return {
-                  type: 'value',
-                  gridIndex: i,
-                  axisLabel: {
-                    formatter: (x: number) => formatValueAxis(x, view.y),
-                  },
-                  ...baseYAxisOptions,
-                }
+                return isBar && which === 0 ?
+                    {
+                      type: 'category',
+                      gridIndex: i,
+                      axisLabel: {
+                        overflow: 'truncate',
+                        width: 90,
+                      },
+                      ...baseYAxisOptions,
+                    }
+                  : {
+                      type: 'value',
+                      gridIndex: i,
+                      axisLabel: {
+                        formatter: (x: number) => formatValueAxis(x, view.y),
+                      },
+                      ...baseYAxisOptions,
+                    }
               }),
               graphic: [
                 {
                   type: 'text',
                   rotation: Math.PI / 2,
-                  left: 20,
+                  left: 15,
                   top: 'center',
                   width: '100%',
                   style: {
-                    text: view.y.label(),
+                    text: isBar && which === 0 && view.lines ? variables[view.lines].labels.full : view.y.label(),
                     fill: colors.text,
                     font: `bold ${labelSize}em "Roboto","Helvetica","Arial",sans-serif`,
                     textAlign: 'center',
@@ -306,9 +353,9 @@ export default function Plot({
                 {
                   type: 'text',
                   left: 'center',
-                  bottom: 20,
+                  bottom: 15,
                   style: {
-                    text: view.x.label(),
+                    text: isBar && which === 1 && view.lines ? variables[view.lines].labels.full : view.x.label(),
                     fill: colors.text,
                     font: `bold ${labelSize}em "Roboto","Helvetica","Arial",sans-serif`,
                     textAlign: 'center',
@@ -317,7 +364,7 @@ export default function Plot({
                 legendName ?
                   {
                     type: 'text',
-                    top: 16,
+                    top: 12,
                     right: 15,
                     bottom: 20,
                     style: {
@@ -345,7 +392,7 @@ export default function Plot({
                 }
               }),
               grid,
-              series,
+              series: s,
               toolbox: {
                 left: 0,
                 bottom: 0,
@@ -364,7 +411,7 @@ export default function Plot({
         }
       }
     }
-  }, [useMode, panels, meta, series, view, formatter, range.x, range.y])
+  }, [useMode, panels, meta, series, view.x, view.y, view.lines, view.lock_range, formatter, range.x, range.y])
   setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
   return (
     <Box

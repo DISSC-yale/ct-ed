@@ -199,6 +199,7 @@ COL_MAP_FY2018 = [
     (20, "computed__engl_adjustment_factor", "computed"),
     (21, "input__median_household_income", "input"),
     (22, "computed__mhi_adjustment_factor", "computed"),
+    (23, "input__pic_decile", "input"),
     (25, "computed__wealth_adjustment_factor", "computed"),
     (26, "computed__base_aid_ratio", "computed"),
     (27, "computed__final_base_aid_ratio", "computed"),
@@ -218,7 +219,12 @@ COL_MAP_FY2018 = [
 # FY2019: entitlement at col 40, prior year at col 36 (FY17 actual)
 COL_MAP_FY2019 = [
     (0, "input__drg", "input"),
+    (1, "input__psd_flag", "input"),
+    (2, "input__alliance_district_flag", "input"),
+    (3, "input__alliance_non_reform_flag", "input"),
+    (4, "input__reform_district_flag", "input"),
     (5, "input__wealth_decile", "input"),
+    (6, "input__pic_decile", "input"),
     (7, "town_code", "input"),
     (8, "town_name", "input"),
     (10, "input__resident_students", "input"),
@@ -237,10 +243,11 @@ COL_MAP_FY2019 = [
     (29, "computed__final_base_aid_ratio", "computed"),
     (30, "input__students_sent_to_regional_district", "input"),
     (31, "input__n_regional_district_grades", "input"),
-    (32, "computed__regional_district_bonus", "computed"),
-    (33, "computed__base_formula_aid", "computed"),
-    (34, "computed__fully_funded_grant", "computed"),
+    (33, "computed__regional_district_bonus", "computed"),
+    (34, "computed__base_formula_aid", "computed"),
+    (35, "computed__fully_funded_grant", "computed"),
     (36, "input__ecs_actual_fy2017", "input"),
+    (36, "input__prior_year_entitlement", "input"),
     (
         40,
         "computed__ecs_entitlement_with_alliance_hh",
@@ -256,7 +263,12 @@ COL_MAP_FY2019 = [
 # FY2020: entitlement at col 41, prior year (FY19) at col 37
 COL_MAP_FY2020 = [
     (0, "input__drg", "input"),
+    (1, "input__psd_flag", "input"),
+    (2, "input__alliance_district_flag", "input"),
+    (3, "input__alliance_non_reform_flag", "input"),
+    (4, "input__reform_district_flag", "input"),
     (5, "input__wealth_decile", "input"),
+    (6, "input__pic_decile", "input"),
     (7, "town_code", "input"),
     (8, "town_name", "input"),
     (10, "input__resident_students", "input"),

@@ -1,8 +1,8 @@
-import {type ActionDispatch, createContext, useContext, useEffect, useMemo, useReducer, useState} from 'react'
+import {type ActionDispatch, createContext, useContext, useMemo, useReducer} from 'react'
 import {background, DataContext, Resources} from './load'
 import {ColumnTable} from 'arquero'
 import {Variable, type VariableInfo} from './variable'
-import {Formula, type ParamValues} from './formula'
+import {Formula, type ActiveParams} from './formula'
 
 export type Variants = 'raw' | 'log' | 'percent'
 export type TimeAgg = 'all' | 'first' | 'specified' | 'last' | 'mean' | 'median'
@@ -55,7 +55,7 @@ export type ViewAction =
 const defaultView: ViewDef = {
   lock_range: false,
   x: new Variable('general__fiscal_year'),
-  y: new Variable('computed__entitlement-secs__entitlement'),
+  y: new Variable('computed__entitlement'),
   lines: 'general__district',
   color: '',
   symbol: '',
@@ -109,12 +109,11 @@ const timeSelectors = {
   last: 'max',
 }
 
-export const FormulaContext = createContext<ParamValues>({})
+export const FormulaContext = createContext<ActiveParams>({})
 export const FormulaEditor = createContext<ActionDispatch<[action: FormulaEditAction]>>(() => {})
 export type FormulaEditAction =
-  | {key: 'param'; which: string; value: number}
-  | {key: 'param'; which: string; value: number[]; index: number}
-  | {key: 'set'; value: ParamValues}
+  | {key: 'param'; which: string; value: number | string}
+  | {key: 'set'; value: ActiveParams}
 
 function applyVariableAction(variable: Variable, action: VariableAction) {
   if (action.part === 'selection') {
@@ -232,16 +231,12 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
   }
   const [view, viewAction] = useReducer(editView, urlParamsToView(urlParams))
 
-  const editParams = (state: ParamValues, action: FormulaEditAction) => {
+  const editParams = (state: ActiveParams, action: FormulaEditAction) => {
     if (action.key === 'set') {
       const newState = {...action.value}
       return newState
     } else {
-      if ('index' in action) {
-        ;(state[action.which] as number[][])[action.index as number] = [...action.value]
-      } else {
-        state[action.which] = action.value
-      }
+      state[action.which] = action.value
     }
     return {...state}
   }

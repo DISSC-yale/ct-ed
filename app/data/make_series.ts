@@ -1,4 +1,4 @@
-import type {LineSeriesOption} from 'echarts/charts'
+import type {BarSeriesOption, LineSeriesOption} from 'echarts/charts'
 import {ColumnTable} from 'arquero'
 import type {Entities} from '../data/load'
 import {Panel, PlotInput} from '../parts/plot'
@@ -7,6 +7,7 @@ import type {ViewDef} from './view'
 
 const colors = ['#FDB8C1', '#30685B', '#FAA588', '#577646', '#E09651', '#818231', '#B28D2E', '#185461', '#F9CCF9']
 const symbols = ['circle', 'triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow']
+const categoricalType = {time: true, binary: true, categorical: true}
 
 function indexMap(data: ColumnTable, variable: string) {
   const levelMap: {[index: string]: number} = {}
@@ -38,7 +39,7 @@ export function makeSeries(
   const {panelX, panelY, color, symbol, lines, time, entity} = refs
   const xPanelLevels = panelX ? unique(selectData, panelX) : ['']
   const yPanelLevels = panelY ? unique(selectData, panelY) : ['']
-  const data: LineSeriesOption[] = []
+  const data: (LineSeriesOption | BarSeriesOption)[] = []
   const panels: Panel[] = []
   const baseSeries: LineSeriesOption = {
     type: 'line',
@@ -60,6 +61,8 @@ export function makeSeries(
     y: [Infinity, -Infinity, -Infinity],
     panel: [1, 1],
   }
+  const xBar = view.lines && !view.x.multi && view.x.firstType in categoricalType
+  const yBar = view.lines && !view.y.multi && view.y.firstType in categoricalType
   const assignColors = lines && lines !== entity
   const colorMap = assignColors ? indexMap(selectData, lines) : {}
   const varIndices: {[index: string]: number} = {}
@@ -102,13 +105,24 @@ export function makeSeries(
       d = d.reify()
       const keepVars = d.columnNames().filter(col => otherVars.includes(col))
       keepVars.forEach((v, i) => (varIndices[v] = i + 2))
+      const asisLevels =
+        xBar || yBar ?
+          (d.rollup({x: xBar ? 'distinct(d.x)' : 0, y: yBar ? 'distinct(d.y)' : 0}).object(0) as {x: number; y: number})
+        : {x: 0, y: 0}
+      const xAsBar = asisLevels.x === 1 && xBar
+      const yAsBar = asisLevels.y === 1 && yBar
+      const asBar = xAsBar || yAsBar
       xRefs.names.forEach((sx, sxi) => {
         yRefs.names.forEach((sy, syi) => {
           const vars = [sx, sy, ...keepVars]
           varIndices[sx] = 0
           varIndices[sy] = 1
           d.partitions().forEach(inds => {
-            const series = {...baseSeries, xAxisIndex: index, yAxisIndex: index} as LineSeriesOption
+            const series = {...baseSeries, xAxisIndex: index, yAxisIndex: index} as LineSeriesOption | BarSeriesOption
+            if (asBar) {
+              series.type = 'bar'
+              ;(series as BarSeriesOption).barGap = '-100%'
+            }
             series.name = label
             series.id = `${sx}.${sxi}.${sy}.${syi}.${x}${xi}${y}${yi}`
             if (lines) {
@@ -136,7 +150,7 @@ export function makeSeries(
               if (!series.color) {
                 series.color = colors[syi % 7]
               } else {
-                series.symbol = symbols[syi % 7]
+                ;(series as LineSeriesOption).symbol = symbols[syi % 7]
               }
             }
             if (sx.startsWith('x_')) {
@@ -144,16 +158,19 @@ export function makeSeries(
               series.name += (series.name ? ', ' : '') + `${labels.category}`
               if (!series.color) {
                 series.color = colors[sxi % 7]
-              } else if (!series.symbol) {
-                series.symbol = symbols[sxi % 7]
+              } else if (!(series as LineSeriesOption).symbol) {
+                ;(series as LineSeriesOption).symbol = symbols[sxi % 7]
               }
             }
             if (!series.color) series.color = colors[0]
-            if (!series.symbol) series.symbol = symbols[0]
+            if (!(series as LineSeriesOption).symbol) (series as LineSeriesOption).symbol = symbols[0]
             const seriesData: (string | number)[][] = []
             series.data = seriesData
             inds.forEach(i => {
               const data = vars.map(col => d.get(col, i))
+              if (asBar) {
+                data[xAsBar ? 0 : 1] = series.name
+              }
               if (data[0] != null && data[1] != null) seriesData.push(data)
             })
             data.push(series)

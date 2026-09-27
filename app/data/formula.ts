@@ -8,13 +8,15 @@ export type FormulaParam = {label: string; category: string; note?: string; used
 type FormulaParams = {
   [key: string]: FormulaParam
 }
-export type ParamValues = {[key: string]: number | number[][]}
-type ActiveParams = {[key: string]: number | string}
+export type BreakpointParam = {reference: string; operator: string; value: number[][]}
+export type ParamValues = {[key: string]: number | BreakpointParam}
+export type ActiveParams = {[key: string]: number | string}
 export type FormulaSpec = {
   section: string
   params: FormulaParams
-  param_history: {[key: string]: ParamValues}
   steps: {[key: string]: string}
+  param_history: {[key: string]: ParamValues}
+  step_history: {[key: string]: {[key: string]: string}}
 }
 type FormulaStep = {params: string[]; parents: string[]; children: string[]; equation: string}
 
@@ -24,18 +26,19 @@ const listSep = /,\s*/g
 
 export class Formula {
   section: string
+  step_history: {[key: string]: {[key: string]: string}}
   param_history: {[key: string]: ParamValues}
   param_offsets: {[key: string]: ParamValues}
   param_specs: FormulaParams
-  params: ActiveParams
+  params: ParamValues
   steps: Map<string, FormulaStep>
-  values: ParamValues
+  values: ActiveParams
   refs: {entity: string; time: string}
   min_time = 0
-  apply_after = 2025
 
   constructor(spec: Partial<FormulaSpec>, refs?: {entity: string; time: string}) {
     this.section = spec.section || ''
+    this.step_history = spec.step_history ? JSON.parse(JSON.stringify(spec.step_history)) : {}
     this.param_history = spec.param_history ? spec.param_history : {}
     this.param_offsets = JSON.parse(JSON.stringify(this.param_history))
     this.param_specs = spec.params ? JSON.parse(JSON.stringify(spec.params)) : {}
@@ -45,33 +48,32 @@ export class Formula {
     this.refs = refs || {entity: '', time: ''}
     Object.keys(this.param_specs).forEach(name => {
       const param = this.param_specs[name]
-      const {reference, operator} = param as {reference: string; operator: string}
-      this.params[name] =
-        Array.isArray(param.value) ?
-          '(' +
-          param.value
-            .map(t => {
-              const col = `d.${reference}`
-              return `${col}${operator}${t[0]} ? ${t[1]} : `
-            })
-            .join('') +
-          '0)'
-        : param.value
+      this.params[name] = 'number' === typeof param.value ? param.value : (param as BreakpointParam)
       param.used_by = []
-      this.values[name] = Array.isArray(param.value) ? JSON.parse(JSON.stringify(param.value)) : param.value
+      this.values[name] =
+        'number' === typeof param.value ? param.value : renderBreakpointParam(param as BreakpointParam)
     })
     Object.keys(this.param_history).forEach(time => {
       const p = this.param_history[time]
       const offsets = this.param_offsets[time]
       Object.keys(p).forEach(name => {
-        if (name in this.values) {
+        if (name in this.params) {
           const value = p[name]
-          if (Array.isArray(value)) {
-            const current = this.values[name] as number[][]
-            offsets[name] = value.map((pair, i) => {
-              pair[1] = pair[1] - current[i][1]
-              return pair
-            })
+          if ('object' === typeof value) {
+            const current = this.params[name] as BreakpointParam
+            const {reference, operator} = value
+            const offsetValue =
+              (
+                current.reference === reference &&
+                current.operator === operator &&
+                current.value.length === value.value.length
+              ) ?
+                value.value.map((pair, i) => {
+                  pair[1] = pair[1] - current.value[i][1]
+                  return pair
+                })
+              : value.value
+            offsets[name] = {...value, value: offsetValue}
           } else {
             offsets[name] = value - (this.values[name] as number)
           }
@@ -102,11 +104,18 @@ export class Formula {
       })
       this.steps.set(name, entry)
     })
+    Object.keys(this.step_history).forEach(time => {
+      const step_state = this.step_history[time]
+      Object.keys(step_state).forEach(name => {
+        step_state[name] = this.extractParams(step_state[name]).translated
+      })
+    })
   }
   reset() {
     Object.keys(this.param_specs).forEach(name => {
-      const {value} = this.param_specs[name]
-      this.values[name] = Array.isArray(value) ? JSON.parse(JSON.stringify(value)) : value
+      const param = this.param_specs[name]
+      this.values[name] =
+        'number' === typeof param.value ? param.value : renderBreakpointParam(param as BreakpointParam)
     })
     return this.values
   }
@@ -114,13 +123,7 @@ export class Formula {
     const p: string[] = []
     let eq = e
     let m
-    while ((m = paramPattern.exec(e))) {
-      const pName = m[1]
-      if ('string' === typeof this.params[pName]) {
-        eq = eq.replace(m[0], this.params[pName])
-      }
-      p.push(pName)
-    }
+    while ((m = paramPattern.exec(e))) p.push(m[1])
     let translated = eq.replaceAll('d.', `d.${this.section}`).replaceAll('s.', 'd.computed__')
     while ((m = rowFun.exec(translated))) {
       translated = translated.replace(
@@ -154,29 +157,23 @@ export class Formula {
       const historical = this.param_offsets[time]
       Object.keys(historical).forEach(param => {
         const offset = historical[param]
-        if (Array.isArray(offset)) {
-          const current = params[param] as number[][]
-          params[param] =
-            current.length === offset.length ?
-              current.map((pair, i) => {
-                const p = [...pair]
-                p[1] = p[1] + offset[i][1]
-                return p
-              })
-            : []
-        } else {
+        if ('number' === typeof offset) {
           params[param] = (params[param] as number) + offset
+        } else {
+          params[param] = renderBreakpointParam(offset)
         }
       })
       data = data.params({p: params}) as ColumnTable
     } else {
       data = data.params({p: this.values}) as ColumnTable
     }
+    const params = (data.params() as {p: ActiveParams}).p
     const colName = `computed__${name}`
     const timeFilter = `d.${this.refs.time} === ${time}`
-    let eq = step.equation
+    const step_state = this.step_history[time]
+    let eq = step_state && name in step_state ? step_state[name] : step.equation
     if (isPrior) {
-      if (time < this.apply_after || time === this.min_time) {
+      if (time < (params.calculated_prior_after as number) || time === this.min_time) {
         eq = eq.split('|')[1]
       } else {
         state.data = data
@@ -189,6 +186,14 @@ export class Formula {
         return step
       }
     }
+    let m
+    const e = eq
+    while ((m = paramPattern.exec(e))) {
+      const pName = m[1]
+      if ('string' === typeof params[pName]) {
+        eq = eq.replace(m[0], params[pName])
+      }
+    }
     data = data.filter(timeFilter)
     if (name.endsWith('_agg')) {
       const aggTable = data.groupby(this.refs.time).rollup({[colName]: eq})
@@ -198,7 +203,7 @@ export class Formula {
     }
     return step
   }
-  run(sequence: string[], data: ColumnTable, values?: ParamValues, partial?: boolean) {
+  run(sequence: string[], data: ColumnTable, values?: ActiveParams, partial?: boolean) {
     if (values) this.values = values
     if (!sequence.length) this.steps.forEach((_, name) => sequence.push(name))
     const times = unique(data, this.refs.time).sort((a, b) => b - a)
@@ -236,4 +241,17 @@ export class Formula {
     }
     return state.data
   }
+}
+
+function renderBreakpointParam({reference, operator, value}: BreakpointParam) {
+  return (
+    '(' +
+    value
+      .map(t => {
+        const col = `d.ecs__${reference}`
+        return `${col}${operator}${t[0]} ? ${t[1]} : `
+      })
+      .join('') +
+    '0)'
+  )
 }
