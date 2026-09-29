@@ -5,7 +5,7 @@ import {Panel, PlotInput} from '../parts/plot'
 import {unique} from '../utils'
 import type {ViewDef} from './view'
 
-const colors = ['#FDB8C1', '#30685B', '#FAA588', '#577646', '#E09651', '#818231', '#B28D2E', '#185461', '#F9CCF9']
+const colors = ['#FDB8C1', '#30685B', '#818231', '#E09651', '#577646', '#FAA588', '#B28D2E', '#185461', '#F9CCF9']
 const symbols = ['circle', 'triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow']
 const categoricalType = {time: true, binary: true, categorical: true}
 
@@ -25,9 +25,9 @@ function updateRanges(name: string, range: number[], data: ColumnTable) {
     .ungroup()
     .rollup({value: `[min(d.${name}), quantile(d.${name}, .97), max(d.${name})]`})
     .array('value')[0]
-  range[0] = Math.min(range[0], r[0])
-  range[1] = Math.max(range[1], r[1])
-  range[2] = Math.max(range[2], r[2])
+  range[0] = Math.min(range[0], r[0] || 0)
+  range[1] = Math.max(range[1], r[1] || 0)
+  range[2] = Math.max(range[2], r[2] || 0)
 }
 
 export function makeSeries(
@@ -61,8 +61,8 @@ export function makeSeries(
     y: [Infinity, -Infinity, -Infinity],
     panel: [1, 1],
   }
-  const xBar = view.lines && !view.x.multi && view.x.firstType in categoricalType
-  const yBar = view.lines && !view.y.multi && view.y.firstType in categoricalType
+  const xBar = lines && !view.x.multi && view.x.firstType in categoricalType
+  const yBar = lines && !view.y.multi && view.y.firstType in categoricalType
   const assignColors = lines && lines !== entity
   const colorMap = assignColors ? indexMap(selectData, lines) : {}
   const varIndices: {[index: string]: number} = {}
@@ -81,8 +81,8 @@ export function makeSeries(
       let d = selectData
       if (panelX) d = d.filter(`d.${panelX} === ` + ('string' === typeof x ? `'${x}'` : x))
       if (panelY) d = d.filter(`d.${panelY} === ` + ('string' === typeof y ? `'${y}'` : y))
-      const yRefs = view.y.addTo(d, 'y')
-      const xRefs = view.x.addTo(yRefs.data, 'x')
+      const yRefs = view.y.addTo('y', d)
+      const xRefs = view.x.addTo('x', yRefs.data)
       d = xRefs.data
       if (aggLines) d = d.filter(`d.${lines} !== null`)
       if (!d.numRows()) return
@@ -144,18 +144,16 @@ export function makeSeries(
               }
               series.color = colors[colorMap[colorLevel]]
             }
-            if (sy.startsWith('y_')) {
-              const labels = view.y.category.variables[sy.replace('y_', '')].labels
-              series.name += (series.name ? ', ' : '') + `${labels.category}`
+            if (sy.startsWith('_y')) {
+              series.name += (series.name ? ', ' : '') + yRefs.display[sy]
               if (!series.color) {
                 series.color = colors[syi % 7]
               } else {
                 ;(series as LineSeriesOption).symbol = symbols[syi % 7]
               }
             }
-            if (sx.startsWith('x_')) {
-              const labels = view.x.category.variables[sx.replace('x_', '')].labels
-              series.name += (series.name ? ', ' : '') + `${labels.category}`
+            if (sx.startsWith('_x')) {
+              series.name += (series.name ? ', ' : '') + xRefs.display[sx]
               if (!series.color) {
                 series.color = colors[sxi % 7]
               } else if (!(series as LineSeriesOption).symbol) {

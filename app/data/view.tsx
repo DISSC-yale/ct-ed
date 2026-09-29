@@ -32,10 +32,13 @@ type Operator = 'none' | '-' | '*' | '/'
 type VariableAction = {key: 'variable'; which: 'x' | 'y'} & (
   | {part: 'selection'; value: VariableInfo[]}
   | {part: 'agg'; value: string}
-  | {part: 'deflate' | 'multi' | 'additional.remove'; value: boolean}
-  | {part: 'additional'; value: {operator: Operator; variable: Variable}}
-  | {part: 'additional.action'; action: ViewAction}
-  | {part: 'additional.operator'; value: Operator}
+  | {part: 'deflate' | 'multi' | 'scale' | 'adjuster.remove'; value: boolean}
+  | {part: 'adjuster'; value: {operator: Operator; variable: Variable}}
+  | {part: 'adjuster.action'; action: ViewAction}
+  | {part: 'adjuster.operator'; value: Operator}
+  | {part: 'additional'; value: Variable}
+  | {part: 'additional.remove'; value: number}
+  | {part: 'additional.action'; index: number; action: ViewAction}
 )
 
 export type ViewAction =
@@ -118,7 +121,7 @@ export type FormulaEditAction =
 function applyVariableAction(variable: Variable, action: VariableAction) {
   if (action.part === 'selection') {
     variable.setSelection(action.value)
-  } else if (action.part !== 'additional.action') {
+  } else if (action.part !== 'adjuster.action' && action.part !== 'additional.action') {
     variable[action.part as 'multi'] = action.value as boolean
     if (action.part === 'multi' && !action.value) {
       if (!variable.selection.length) {
@@ -177,30 +180,49 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       newState.entities = Object.keys(action.value).length < 10 ? Object.keys(action.value).join(',') : ''
       newState.entities_select = {...action.value}
     } else if (action.key === 'variable') {
-      const variable = newState[action.which]
+      const variable = new Variable(newState[action.which], categories)
       if (action.part.startsWith('additional')) {
         if (action.part === 'additional') {
-          variable.additional = action.value
+          const newVariable = new Variable(variable, categories)
+          newState[action.which] = newVariable
+          newVariable.additional = [...newState[action.which].additional, action.value]
         } else if (action.part === 'additional.remove') {
-          delete variable.additional
-        } else {
-          if (!variable.additional) {
-            variable.additional = {operator: 'none', variable: new Variable(variable.id, categories)}
+          const newVariable = new Variable(variable, categories)
+          newState[action.which] = newVariable
+          newVariable.additional = [...newState[action.which].additional]
+          newVariable.additional.splice(action.value, 1)
+        } else if (action.part === 'additional.action') {
+          if (action.action.key === action.which) {
+            variable.additional = [...variable.additional]
+            variable.additional[action.index] = new Variable(action.action.value, categories)
+          } else {
+            applyVariableAction(variable.additional[action.index], action.action as VariableAction)
           }
-          const additional = variable.additional
-          if (action.part === 'additional.operator') {
-            additional.operator = action.value
-          } else if (action.part === 'additional.action') {
+        }
+      } else if (action.part.startsWith('adjuster')) {
+        if (action.part === 'adjuster') {
+          variable.adjuster = action.value
+        } else if (action.part === 'adjuster.remove') {
+          delete variable.adjuster
+        } else {
+          if (!variable.adjuster) {
+            variable.adjuster = {operator: 'none', variable: new Variable(variable.id, categories)}
+          }
+          const adjuster = variable.adjuster
+          if (action.part === 'adjuster.operator') {
+            adjuster.operator = action.value
+          } else if (action.part === 'adjuster.action') {
             if (action.action.key === action.which) {
-              additional.variable = action.action.value
+              adjuster.variable = action.action.value
             } else {
-              applyVariableAction(additional.variable, action.action as VariableAction)
+              applyVariableAction(adjuster.variable, action.action as VariableAction)
             }
           }
         }
       } else {
         applyVariableAction(variable, action)
       }
+      state[action.which] = variable
     } else if (action.key === 'flip_axes') {
       newState.x = state.y
       newState.y = state.x

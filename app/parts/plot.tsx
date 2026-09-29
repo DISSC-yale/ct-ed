@@ -116,6 +116,16 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
 }
 const indices: {[key: string]: number} = {}
 
+function resolveId(name: string, id: string, variable: Variable) {
+  if (id === '' || id === name) {
+    return variable.fullId()
+  }
+  if (id.startsWith('_')) return id.replace('_', '')
+  const index = +id.replace('_', '')
+  if ('undefined' !== typeof index) return variable.additional[index].fullId()
+  return id
+}
+
 export default function Plot({
   input,
   view,
@@ -191,8 +201,10 @@ export default function Plot({
     }) => {
       const entity = info.refs.entity in indices && meta.entities[value[indices[info.refs.entity]]]
       const parts = seriesId.split('.')
-      const xCateogry = parts[0].replace('x_', '')
-      const yCateogry = parts[2].replace('y_', '')
+      let xVar = resolveId('x', parts[0].replace('_x', ''), view.x)
+      let yVar = resolveId('y', parts[2].replace('_y', ''), view.y)
+      const xInfo = variables[xVar]
+      const yInfo = variables[yVar]
       return (
         '<div class="tooltip-table">' +
         (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
@@ -207,16 +219,16 @@ export default function Plot({
         ('string' === typeof value[0] && value[0] === seriesName ?
           ''
         : '<tr><td>' +
-          (xCateogry === 'x' ? view.x.label() : view.x.category.variables[xCateogry].labels.full) +
+          xInfo.labels.full +
           '</td><td><strong>' +
-          formatValue(value[0], variables[view.x.id]) +
+          formatValue(value[0], xInfo, view.x) +
           '</strong></td></tr>') +
         ('string' === typeof value[1] && value[1] === seriesName ?
           ''
         : '<tr><td>' +
-          (yCateogry === 'y' ? view.y.label() : view.y.category.variables[yCateogry].labels.full) +
+          yInfo.labels.full +
           '</td><td><strong>' +
-          formatValue(value[1], variables[view.y.id]) +
+          formatValue(value[1], yInfo, view.y) +
           '</strong></td></tr>') +
         '</table></div>'
       )
@@ -243,11 +255,16 @@ export default function Plot({
           panelSpacing.legendWidth = 0
           let legendName = ''
           if (!isBar) {
-            if (view.lines) legendName = variables[view.lines].labels.full
-            if (view.y.multi && view.y.agg === 'none' && view.y.selection.length > 1)
-              legendName += (legendName ? ', ' : '') + view.y.label()
-            if (view.x.multi && view.x.agg === 'none' && view.x.selection.length > 1)
-              legendName += (legendName ? ', ' : '') + view.x.label()
+            if (view.lines && (view.lines !== info.refs.entity || Object.keys(view.entities_select).length > 1))
+              legendName = variables[view.lines].labels.full
+            if (view.x.additional.length || view.y.additional.length) {
+              legendName += (legendName ? ', ' : '') + 'Variable'
+            } else {
+              if (view.y.multi && view.y.agg === 'none' && view.y.selection.length > 1)
+                legendName += (legendName ? ', ' : '') + view.y.label()
+              if (view.x.multi && view.x.agg === 'none' && view.x.selection.length > 1)
+                legendName += (legendName ? ', ' : '') + view.x.label()
+            }
             if (legendName) {
               series.forEach(s => {
                 const len = (s.name as string).length
@@ -279,7 +296,7 @@ export default function Plot({
                 right: 'right',
                 orient: 'vertical',
                 type: 'scroll',
-                data: legendName && seriesNames.length > 1 ? seriesNames : [],
+                data: seriesNames.length > 1 ? seriesNames : [],
               },
               backgroundColor: colors.bg,
               tooltip: {
@@ -344,7 +361,13 @@ export default function Plot({
                   top: 'center',
                   width: '100%',
                   style: {
-                    text: isBar && which === 0 && view.lines ? variables[view.lines].labels.full : view.y.label(),
+                    text:
+                      isBar && which === 0 && view.lines ? variables[view.lines].labels.full
+                      : view.y.additional.length ?
+                        view.y.scale ?
+                          'Z-Score'
+                        : 'Raw Value'
+                      : view.y.label(),
                     fill: colors.text,
                     font: `bold ${labelSize}em "Roboto","Helvetica","Arial",sans-serif`,
                     textAlign: 'center',
@@ -355,7 +378,13 @@ export default function Plot({
                   left: 'center',
                   bottom: 15,
                   style: {
-                    text: isBar && which === 1 && view.lines ? variables[view.lines].labels.full : view.x.label(),
+                    text:
+                      isBar && which === 1 && view.lines ? variables[view.lines].labels.full
+                      : view.x.additional.length ?
+                        view.x.scale ?
+                          'Z-Score'
+                        : 'Raw Value'
+                      : view.x.label(),
                     fill: colors.text,
                     font: `bold ${labelSize}em "Roboto","Helvetica","Arial",sans-serif`,
                     textAlign: 'center',

@@ -1,4 +1,5 @@
-import {addFunction, type ColumnTable} from 'arquero'
+import {addFunction, addWindowFunction, type ColumnTable} from 'arquero'
+import type {AggregateOperator} from 'arquero/dist/types/op/aggregate-functions'
 import {statistics} from 'echarts-stat'
 
 export type VariableTypes =
@@ -30,7 +31,7 @@ export type Category = {
   firstInstance?: VariableInfo
 }
 export type Categories = {[key: string]: Category}
-type AdditionalVariable = {operator: 'none' | '-' | '*' | '/'; variable: Variable}
+type AdjusterVariable = {operator: 'none' | '-' | '*' | '/'; variable: Variable}
 const operatorMap = {none: 'n', '-': 's', '*': 'm', '/': 'd'}
 const operatorLabelMap = {none: 'and', '-': '-', '*': '*', '/': '/'}
 
@@ -42,9 +43,11 @@ export class Variable {
   multi = false
   agg: 'none' | 'sum' | 'mean' | 'median' = 'none'
   crossAgg: 'sum' | 'mean' | 'median' = 'mean'
+  scale: boolean = false
   deflate?: boolean
   firstType = 'value'
-  additional?: AdditionalVariable
+  adjuster?: AdjusterVariable
+  additional: Variable[] = []
 
   constructor(spec: Variable | string, categories?: Categories, selection?: VariableInfo | VariableInfo[]) {
     if ('string' === typeof spec) spec = this.fromString(spec)
@@ -67,14 +70,16 @@ export class Variable {
     this.categories = categories || spec.categories
     if ('agg' in spec) this.agg = spec.agg
     if ('multi' in spec) this.multi = spec.multi
+    if ('scale' in spec) this.scale = spec.scale
     if ('deflate' in spec) this.deflate = spec.deflate
     if ('firstType' in spec) this.firstType = spec.firstType
-    if ('additional' in spec && spec.additional) {
-      this.additional = spec.additional
-      if (categories && !this.additional.variable.categories) {
-        this.additional.variable = new Variable(this.additional.variable, categories)
+    if ('adjuster' in spec && spec.adjuster) {
+      this.adjuster = spec.adjuster
+      if (categories && !this.adjuster.variable.categories) {
+        this.adjuster.variable = new Variable(this.adjuster.variable, this.categories)
       }
     }
+    if ('additional' in spec) this.additional = spec.additional.map(v => new Variable(v, this.categories))
     if (categories && spec.selection && spec.selection.length) {
       this.selection = []
       spec.selection.forEach(cat => {
@@ -110,28 +115,60 @@ export class Variable {
         'd.' + (this.category.levels.length ? this.selection[0].id : this.id)
       : this.agg === 'none' ? 'null'
       : `row_${this.agg}(compact(Object.values(row_object('${this.getColNames().join("','")}'))))`
-    if (this.deflate) id = `(${id} == null ? ${id} : ${id} * d.general__cpi_u_deflator)`
+    if (this.deflate) id = `(${id} == null ? null : ${id} * d.general__cpi_u_deflator)`
+    if (this.adjuster && this.adjuster.operator !== 'none') {
+      id += ` ${this.adjuster.operator} (${this.adjuster.variable.formula()})`
+    }
+    if (this.scale) id = `scale(${id})`
     return id
   }
-  addTo(data: ColumnTable, name: string) {
-    if (this.multi && this.selection.length > 1 && this.agg === 'none') {
+  addTo(name: string, data: ColumnTable, isChild?: boolean) {
+    const multiVar = isChild || this.additional.length
+    const multiLevel = this.multi && this.selection.length > 1 && this.agg === 'none'
+    if (multiVar || multiLevel) {
       const names: string[] = []
+      const display: {[key: string]: string} = {}
       const formulas: {[key: string]: string} = {}
       const aggers: {[key: string]: string} = {}
-      this.selection.forEach(({id}) => {
-        const colName = `${name}_${id}`
+      if (multiLevel) {
+        this.selection.forEach(({id, labels}) => {
+          const colName = `_${name}_${id}`
+          names.push(colName)
+          display[colName] = isChild || multiVar ? labels.full : labels.category
+          formulas[colName] = `d.${id} == null ? null : d.${id}${this.deflate ? ' * d.general__cpi_u_deflator' : ''}`
+          if (this.scale) formulas[colName] = `scale(${formulas[colName]})`
+          aggers[colName] = `${this.crossAgg}(d.${colName})`
+        })
+      } else {
+        const colName = isChild ? name : '_' + name
         names.push(colName)
-        formulas[colName] = `d.${id}${this.deflate ? ' * d.general__cpi_u_deflator' : ''}`
+        display[colName] = isChild || multiVar ? this.label() : this.category.labels.variable
+        formulas[colName] = this.formula()
         aggers[colName] = `${this.crossAgg}(d.${colName})`
-      })
-      return {names, aggers, data: data.derive(formulas)}
+      }
+      if (multiVar) {
+        this.additional.forEach((v, i) => {
+          const colName = `_${name}${i}_`
+          v.scale = this.scale
+          const additions = v.addTo(colName, data, true)
+          data = additions.data
+          additions.names.forEach(n => names.push(n))
+          Object.keys(additions.display).forEach(n => {
+            display[n] = additions.display[n]
+          })
+          Object.keys(additions.aggers).forEach(n => {
+            aggers[n] = additions.aggers[n]
+          })
+        })
+      }
+      return {names, display, aggers, data: data.derive(formulas)}
     }
-    let id = this.formula()
-    if (this.additional && this.additional.operator !== 'none') {
-      id += ` ${this.additional.operator} (${this.additional.variable.formula()})`
+    return {
+      names: [name],
+      display: {[name]: this.category.labels.variable},
+      aggers: {[name]: `${this.crossAgg}(d.${name})`},
+      data: data.derive({[name]: this.formula()}),
     }
-    data = data.derive({[name]: id})
-    return {names: [name], aggers: {[name]: `${this.crossAgg}(d.${name})`}, data}
   }
   getColNames(access: string = '') {
     return (this.selection.length ? this.selection : Object.values(this.category.variables)).map(
@@ -143,6 +180,9 @@ export class Variable {
   }
   copy() {
     return new Variable(this)
+  }
+  fullId() {
+    return this.selection.length && this.selection[0] ? this.selection[0].id : this.id
   }
   label(): string {
     const {section, variable} = this.category.labels
@@ -157,23 +197,36 @@ export class Variable {
         : ''
       : '') +
       (this.deflate ? ' (2026 $)' : '') +
-      (this.additional ? ` ${operatorLabelMap[this.additional.operator]} ${this.additional.variable.label()}` : '')
+      (this.adjuster && this.adjuster.operator !== 'none' ?
+        ` ${operatorLabelMap[this.adjuster.operator]} ${this.adjuster.variable.label()}`
+      : '')
     )
   }
-  toString() {
+  toString(): string {
+    const flags = (this.deflate ? 'd' : '') + (this.scale ? 's' : '')
     return (
+      (flags ? flags + 'F' : '') +
       this.id +
       (this.category.levels.length && this.selection.length ?
         `[${this.selection.map(c => c.parts.category).join(',')}]` +
         (this.agg !== 'none' && this.selection.length > 1 ? `.${this.agg}` : '')
       : '') +
-      (this.additional ? `-${operatorMap[this.additional.operator]}${this.additional.variable}` : '')
+      (this.adjuster ? `-${operatorMap[this.adjuster.operator]}${this.adjuster.variable}` : '') +
+      (this.additional.length ? ';' + this.additional.map(v => v.toString()).join(';') : '')
     )
   }
   fromString(spec: string) {
+    const multi = spec.split(';')
+    spec = multi.splice(0, 1)[0]
     const partial: Partial<Variable> = {}
-    const additionalParts = spec.split('-')
-    const parts = additionalParts[0].split('.')
+    if (spec.includes('F')) {
+      const flags = spec.split('F')
+      spec = flags[1]
+      partial.deflate = flags[0].includes('d')
+      partial.scale = flags[0].includes('s')
+    }
+    const adjusterParts = spec.split('-')
+    const parts = adjusterParts[0].split('.')
     if (parts.length > 1) partial.agg = parts[1] as 'sum'
     const variableParts = parts[0].split('[')
     partial.id = variableParts[0]
@@ -190,13 +243,16 @@ export class Variable {
     } else if (this.category && this.category.levels.length) {
       partial.selection = Object.values(this.category.variables)
     }
-    if (additionalParts.length > 1) {
+    if (adjusterParts.length > 1) {
       const map: {[key: string]: string} = {}
       Object.keys(operatorMap).forEach(to => (map[operatorMap[to as '-']] = to))
-      const operator = map[additionalParts[1].substring(0, 1)] as '-'
+      const operator = map[adjusterParts[1].substring(0, 1)] as '-'
       if (operator) {
-        partial.additional = {operator, variable: new Variable(additionalParts[1].substring(1), this.categories)}
+        partial.adjuster = {operator, variable: new Variable(adjusterParts[1].substring(1), this.categories)}
       }
+    }
+    if (multi.length) {
+      partial.additional = multi.map(s => new Variable(s, this.categories))
     }
     return partial as Variable
   }
@@ -220,6 +276,39 @@ export function initCustomFunctions() {
     'round',
     (x: number | undefined, digits: number) =>
       x == null ? null : +(x + Number.EPSILON).toFixed(Math.min(100, Math.max(0, digits))),
+    {
+      override: true,
+    },
+  )
+  addWindowFunction(
+    'scale',
+    {
+      create: () => {
+        let mean: number | null = null
+        let sd: number | null = null
+        return {
+          init: () => ((mean = null), (sd = null)),
+          value: (
+            w: {
+              size: number
+              index: number
+              value: (index: number, get: (row: number, data: ColumnTable, op: any) => number) => number
+            },
+            f: (row: number, data: ColumnTable, op: any) => number,
+          ) => {
+            if (mean === null || sd === null) {
+              const v = []
+              for (let i = w.size; i--; ) v.push(w.value(i, f))
+              mean = statistics.mean(v)
+              sd = statistics.deviation(v)
+            }
+            const value = w.value(w.index, f)
+            return value == null ? null : (((value - mean) / sd) as number)
+          },
+        } as unknown as AggregateOperator
+      },
+      param: [1, 0],
+    },
     {
       override: true,
     },

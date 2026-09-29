@@ -1,11 +1,14 @@
 import {from, type ColumnTable} from 'arquero'
 import type {LineSeriesOption} from 'echarts'
-import type {VariableInfo} from './data/variable'
+import type {Variable, VariableInfo} from './data/variable'
 
 const formatter = Intl.NumberFormat().format
-export function formatValue(x: number, info?: VariableInfo): string | number | undefined {
+export function formatValue(x: number, info?: VariableInfo, variable?: Variable): string | number | undefined {
   if (x == null) return 'NA'
-  const type = info ? info.type : 'value'
+  const type =
+    variable && variable.scale ? 'scaled'
+    : info ? info.type
+    : 'value'
   if ('number' !== typeof x || type === 'time') return x
   return (
     (type === 'dollar' ? '$' : '') +

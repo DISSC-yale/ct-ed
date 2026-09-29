@@ -1,5 +1,9 @@
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Autocomplete,
+  Box,
   Button,
   Card,
   CardContent,
@@ -7,12 +11,15 @@ import {
   createFilterOptions,
   FormControl,
   FormControlLabel,
+  IconButton,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import {Category, Variable, type Categories, type VariableInfo} from './variable'
@@ -22,6 +29,7 @@ import {DataContext, type Resources} from './load'
 import {Selector} from '../parts/selector'
 import {SingleSelect, type SelectOption} from '../parts/selector_single'
 import {BasicSelector} from '../parts/selector_basic'
+import {Close, ExpandMore} from '@mui/icons-material'
 
 const filterOptions = createFilterOptions({stringify: (option: Category) => option.searchString})
 
@@ -47,6 +55,7 @@ const operatorOptions = [
 ]
 
 function FieldControls({
+  isAdjuster,
   isAdditional,
   name,
   variable,
@@ -56,7 +65,8 @@ function FieldControls({
   variables,
   categories,
 }: {
-  isAdditional: boolean
+  isAdjuster?: boolean
+  isAdditional?: boolean
   name: 'x' | 'y'
   variable: Variable
   update: (action: ViewAction) => void
@@ -85,7 +95,7 @@ function FieldControls({
         }}
       ></Autocomplete>
       {variable.category && variable.category.levels.length ?
-        variable.multi && !isAdditional ?
+        variable.multi && !isAdjuster ?
           <>
             <Selector
               label="Levels"
@@ -124,88 +134,175 @@ function FieldControls({
           />
 
       : <></>}
-      {variable.category.levels.length && !isAdditional ?
-        <FormControlLabel
-          label="Multiple Levels"
-          labelPlacement="end"
-          control={
-            <Switch
-              size="small"
-              checked={variable.multi}
-              onChange={() => update({key: 'variable', which: name, part: 'multi', value: !variable.multi})}
+      <Stack direction="row" spacing={1} sx={{pl: 1, justifyContent: 'space-between'}}>
+        <Box>
+          {variable.category.levels.length && !isAdjuster ?
+            <FormControlLabel
+              label="Multiple Levels"
+              labelPlacement="end"
+              control={
+                <Switch
+                  size="small"
+                  checked={variable.multi}
+                  onChange={() => update({key: 'variable', which: name, part: 'multi', value: !variable.multi})}
+                />
+              }
             />
-          }
-        />
-      : <></>}
-      {variable.firstType === 'dollar' ?
-        <FormControlLabel
-          label="Inflation Adjust"
-          labelPlacement="end"
-          control={
-            <Switch
+          : <></>}
+          {variable.firstType === 'dollar' ?
+            <Tooltip title="Adjust for inflation." placement="left">
+              <FormControlLabel
+                label="Deflate"
+                labelPlacement="end"
+                control={
+                  <Switch
+                    size="small"
+                    checked={variable.deflate}
+                    onChange={() => update({key: 'variable', which: name, part: 'deflate', value: !variable.deflate})}
+                  />
+                }
+              />
+            </Tooltip>
+          : <></>}
+          {!isAdjuster && !isAdditional && variable.additional.length ?
+            <Tooltip title="Scale (z-score) all variables independently." placement="left">
+              <FormControlLabel
+                label="Scale"
+                labelPlacement="end"
+                control={
+                  <Switch
+                    size="small"
+                    checked={variable.scale}
+                    onChange={() => update({key: 'variable', which: name, part: 'scale', value: !variable.scale})}
+                  />
+                }
+              />
+            </Tooltip>
+          : <></>}
+        </Box>
+        {!isAdjuster ?
+          variable.adjuster ?
+            <Button
               size="small"
-              checked={variable.deflate}
-              onChange={() => update({key: 'variable', which: name, part: 'deflate', value: !variable.deflate})}
-            />
-          }
-        />
-      : <></>}
-      {!isAdditional && variable.additional && (
+              onClick={() =>
+                update({
+                  key: 'variable',
+                  which: name,
+                  part: 'adjuster.remove',
+                  value: true,
+                })
+              }
+            >
+              Unadjust
+            </Button>
+          : <Tooltip title="Add a variable to adjust this variable by." placement="bottom">
+              <Button
+                size="small"
+                onClick={() =>
+                  update({
+                    key: 'variable',
+                    which: name,
+                    part: 'adjuster',
+                    value: {operator: 'none', variable: new Variable(variable.id, categories)},
+                  })
+                }
+              >
+                Adjust
+              </Button>
+            </Tooltip>
+
+        : <></>}
+      </Stack>
+      {!isAdjuster && variable.adjuster && (
+        <Stack spacing={1} sx={{p: 2, pt: 0, pb: 0}}>
+          <FormControl variant="outlined" fullWidth size="small">
+            <InputLabel id="operator_select">Adjustment</InputLabel>
+            <Select
+              labelId="operator_select"
+              label="Adjustment"
+              value={variable.adjuster.operator}
+              onChange={e => {
+                update({key: 'variable', which: name, part: 'adjuster.operator', value: e.target.value})
+              }}
+            >
+              {operatorOptions}
+            </Select>
+          </FormControl>
+          <Typography variant="caption">{variable.adjuster.variable.category.labels.section}</Typography>
+          <FieldControls
+            isAdjuster={true}
+            name={name}
+            variable={variable.adjuster.variable}
+            update={action => update({key: 'variable', which: name, part: 'adjuster.action', action})}
+            options={options}
+            allVariables={allVariables}
+            categories={categories}
+            variables={variables}
+          />
+        </Stack>
+      )}
+      {!isAdjuster && !isAdditional && (
         <Button
           size="small"
           onClick={() =>
             update({
               key: 'variable',
               which: name,
-              part: 'additional.remove',
-              value: true,
+              part: 'additional',
+              value: new Variable(variable.id, categories),
             })
           }
         >
-          Remove Adjuster
+          Add Variable
         </Button>
       )}
-      {!isAdditional &&
-        (variable.additional ?
-          <Stack spacing={1} sx={{p: 2, pt: 0}}>
-            <FormControl variant="outlined" fullWidth size="small">
-              <InputLabel id="operator_select">Adjustment</InputLabel>
-              <Select
-                labelId="operator_select"
-                label="Adjustment"
-                value={variable.additional.operator}
-                onChange={e => {
-                  update({key: 'variable', which: name, part: 'additional.operator', value: e.target.value})
-                }}
-              >
-                {operatorOptions}
-              </Select>
-            </FormControl>
-            <Typography variant="caption">{variable.additional.variable.category.labels.section}</Typography>
-            <FieldControls
-              isAdditional={true}
-              name={name}
-              variable={variable.additional.variable}
-              update={action => update({key: 'variable', which: name, part: 'additional.action', action})}
-              options={options}
-              allVariables={allVariables}
-              categories={categories}
-              variables={variables}
-            />
-          </Stack>
-        : <Button
-            size="small"
-            onClick={() =>
-              update({
-                key: 'variable',
-                which: name,
-                part: 'additional',
-                value: {operator: 'none', variable: new Variable(variable.id, categories)},
-              })
-            }
+      {!isAdjuster && !isAdditional && variable.additional.length ?
+        <Accordion variant="outlined" defaultExpanded={true}>
+          <AccordionSummary
+            expandIcon={<ExpandMore />}
+            aria-controls={`${name}-additional-variables`}
+            id={`${name}-additional-variables`}
           >
-            Add Adjuster
-          </Button>)}
+            <Typography>Additional Variables</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{p: 0.5}}>
+            <Stack spacing={0.5}>
+              {variable.additional.map((v, index) => (
+                <Paper key={index} variant="outlined" sx={{position: 'relative'}}>
+                  <IconButton
+                    aria-label="remove additional variable"
+                    onClick={() => update({key: 'variable', which: name, part: 'additional.remove', value: index})}
+                    color="error"
+                    sx={{
+                      position: 'absolute',
+                      right: -5,
+                      top: -5,
+                    }}
+                  >
+                    <Close />
+                  </IconButton>
+                  <Stack spacing={1} sx={{p: 0.5}}>
+                    <Typography variant="caption">{v.category.labels.section}</Typography>
+                    <FieldControls
+                      isAdjuster={true}
+                      isAdditional={true}
+                      name={name}
+                      variable={v}
+                      update={action =>
+                        update({key: 'variable', which: name, part: 'additional.action', index, action})
+                      }
+                      options={options}
+                      allVariables={allVariables}
+                      categories={categories}
+                      variables={variables}
+                    />
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+      : <></>}
     </Stack>
   )
 }
@@ -242,7 +339,6 @@ export default function VariableControls({
       />
       <CardContent sx={{p: 1, pb: '8px !important'}}>
         <FieldControls
-          isAdditional={false}
           name={name}
           variable={variable}
           update={viewAction}

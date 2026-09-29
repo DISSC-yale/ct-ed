@@ -16,7 +16,7 @@ export function DataDisplay({mode}: {mode?: 'dark' | 'light'}) {
         {
           panelX: view.x_panels,
           panelY: view.y_panels,
-          lines: view.lines,
+          lines: view.lines === info.refs.entity && Object.keys(view.entities_select).length === 1 ? '' : view.lines,
           color: view.color,
           symbol: view.symbol,
           time: info.refs.time,

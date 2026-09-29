@@ -87,26 +87,16 @@ export function DataMenu() {
               }
             />
             {view.advanced ?
-              <Stack direction="row" sx={{alignItems: 'center'}}>
-                <Stack spacing={1} sx={{width: 'calc(100% - 40px)'}}>
-                  <Typography>Y-Axis</Typography>
-                  <VariableControls
-                    name="y"
-                    variable={view.y}
-                    allVariables={allVariables}
-                    categories={full.categories}
-                  />
+              <Stack>
+                <Typography>Y-Axis</Typography>
+                <VariableControls name="y" variable={view.y} allVariables={allVariables} categories={full.categories} />
+                <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'baseline'}}>
                   <Typography>X-Axis</Typography>
-                  <VariableControls
-                    name="x"
-                    variable={view.x}
-                    allVariables={allVariables}
-                    categories={full.categories}
-                  />
+                  <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
+                    <FlipCameraAndroid />
+                  </IconButton>
                 </Stack>
-                <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
-                  <FlipCameraAndroid />
-                </IconButton>
+                <VariableControls name="x" variable={view.x} allVariables={allVariables} categories={full.categories} />
               </Stack>
             : <VariableControls
                 name="y"
