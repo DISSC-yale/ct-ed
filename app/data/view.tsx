@@ -183,17 +183,12 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       const variable = new Variable(newState[action.which], categories)
       if (action.part.startsWith('additional')) {
         if (action.part === 'additional') {
-          const newVariable = new Variable(variable, categories)
-          newState[action.which] = newVariable
-          newVariable.additional = [...newState[action.which].additional, action.value]
+          variable.additional = [...newState[action.which].additional, action.value]
         } else if (action.part === 'additional.remove') {
-          const newVariable = new Variable(variable, categories)
-          newState[action.which] = newVariable
-          newVariable.additional = [...newState[action.which].additional]
-          newVariable.additional.splice(action.value, 1)
+          variable.additional = [...newState[action.which].additional]
+          variable.additional.splice(action.value, 1)
         } else if (action.part === 'additional.action') {
           if (action.action.key === action.which) {
-            variable.additional = [...variable.additional]
             variable.additional[action.index] = new Variable(action.action.value, categories)
           } else {
             applyVariableAction(variable.additional[action.index], action.action as VariableAction)
@@ -222,7 +217,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       } else {
         applyVariableAction(variable, action)
       }
-      state[action.which] = variable
+      newState[action.which] = variable
     } else if (action.key === 'flip_axes') {
       newState.x = state.y
       newState.y = state.x
