@@ -53,6 +53,7 @@ export class Variable {
     if ('string' === typeof spec) spec = this.fromString(spec)
     if (selection) spec.selection = Array.isArray(selection) ? [...selection] : [selection]
     if (!categories && spec.categories) categories = spec.categories
+    if (categories && !(spec.id in categories)) spec.id = 'computed__entitlement'
     this.id = spec.id
     const [section, name] = spec.id.split('__')
     this.category =
@@ -87,7 +88,7 @@ export class Variable {
       })
       if (this.selection.length) {
         if (!this.multi && this.selection.length > 1) this.multi = true
-      } else {
+      } else if (this.multi || this.category.firstInstance) {
         this.selection =
           this.multi ? [...Object.values(this.category.variables)] : [this.category.firstInstance as VariableInfo]
       }
@@ -211,7 +212,7 @@ export class Variable {
     )
   }
   toString(): string {
-    const flags = (this.deflate ? 'd' : '') + (this.scale ? 's' : '')
+    const flags = (this.deflate ? 'i' : '') + (this.scale ? 'z' : '')
     return (
       (flags ? flags + 'F' : '') +
       this.id +
@@ -227,17 +228,17 @@ export class Variable {
     const multi = spec.split(';')
     spec = multi.splice(0, 1)[0]
     const partial: Partial<Variable> = {}
-    if (spec.includes('F')) {
-      const flags = spec.split('F')
-      spec = flags[1]
-      partial.deflate = flags[0].includes('d')
-      partial.scale = flags[0].includes('s')
-    }
     const adjusterParts = spec.split('-')
     const parts = adjusterParts[0].split('.')
     if (parts.length > 1) partial.agg = parts[1] as 'sum'
     const variableParts = parts[0].split('[')
     partial.id = variableParts[0]
+    if (partial.id.includes('F')) {
+      const flags = partial.id.split('F')
+      partial.id = flags[1]
+      partial.deflate = flags[0].includes('i')
+      partial.scale = flags[0].includes('z')
+    }
     if (this.categories && !(partial.id in this.categories)) {
       partial.id = Object.keys(this.categories)[0]
     }

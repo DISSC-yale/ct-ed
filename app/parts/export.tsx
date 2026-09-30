@@ -14,15 +14,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import {ColumnTable} from 'arquero'
 import {useContext, useMemo, useState} from 'react'
 import {DataContext, Resources} from '../data/load'
 import {FullDataContext, SelectedContext, ViewContext, ViewDef} from '../data/view'
 
-function makePartialName(filtered: ColumnTable, view: ViewDef, version: string) {
+function makeName(view: ViewDef, version: string) {
   return `ct_ed_${version}${
     view.time_agg === 'all' ? '' : '_' + (view.time_agg === 'specified' ? view.select_time : view.time_agg + '-time')
-  }_${filtered.numRows()}`
+  }`
 }
 export function Export() {
   const {meta} = useContext(DataContext) as Resources
@@ -35,7 +34,7 @@ export function Export() {
   const data = useMemo(() => (fullExport ? fullData : selected), [fullExport, fullData, selected])
   const allColumns = useMemo(() => data.columnNames(), [data])
   const [columns, setColumns] = useState(allColumns.filter(col => (view.time_agg === 'mean' ? col !== 'year' : true)))
-  const [filename, setFilename] = useState(makePartialName(data, view, meta.updated))
+  const [filename, setFilename] = useState(makeName(view, meta.updated))
   const close = () => setOpen(!open)
   return (
     <>
@@ -92,23 +91,7 @@ export function Export() {
                 sx={{float: 'right'}}
                 label="Full Dataset"
                 labelPlacement="start"
-                control={
-                  <Switch
-                    checked={fullExport}
-                    onChange={() => {
-                      const defaultNames = {
-                        partial: makePartialName(data, view, meta.updated),
-                        full: `ct_ed_${meta.updated}${
-                          view.time_agg === 'all' ?
-                            ''
-                          : '_' + (view.time_agg === 'specified' ? view.select_time : view.time_agg + '-time')
-                        }`,
-                      }
-                      setFilename(defaultNames[fullExport ? 'partial' : 'full'])
-                      setFullExport(!fullExport)
-                    }}
-                  />
-                }
+                control={<Switch checked={fullExport} onChange={() => setFullExport(!fullExport)} />}
               />
             </Stack>
           </DialogContent>

@@ -162,7 +162,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
     if (chart)
       chart.on('click', params => {
         if (params.componentType === 'legend') {
-          const s = params.seriesIndex && currentSeries.current[params.seriesIndex]
+          const s = 'undefined' !== typeof params.seriesIndex && currentSeries.current[params.seriesIndex]
           if (s && s.data) {
             const id = (s.data[0] as string[])[indices.current[info.refs.entity]]
             if (id in meta.entities) {

@@ -1,5 +1,5 @@
-import {type ActionDispatch, createContext, useContext, useMemo, useReducer} from 'react'
-import {DataContext, Resources} from './load'
+import {type ActionDispatch, createContext, useCallback, useContext, useMemo, useReducer} from 'react'
+import {DataContext, Resources, type Entities} from './load'
 import {ColumnTable} from 'arquero'
 import {Variable, type VariableInfo} from './variable'
 import type {ActiveParams} from './formula'
@@ -58,67 +58,14 @@ export type ViewAction =
   | {key: 'formula.set'; value: ActiveParams}
   | {key: 'formula'; which: string; value: number}
 
-const defaultView: ViewDef = {
-  lock_range: false,
-  x: new Variable('general__fiscal_year'),
-  y: new Variable('computed__entitlement'),
-  lines: 'general__district',
-  color: '',
-  symbol: '',
-  x_panels: '',
-  y_panels: '',
-  time_agg: 'all',
-  select_time: '2025',
-  entity_center: false,
-  entities: '',
-  entities_select: {},
-  min_time: '',
-  max_time: '',
-  profile: '',
-  profile_section: 'rev',
-  advanced: false,
-  formula_params: {},
-}
-const defaultXY = {x: defaultView.x.toString(), y: defaultView.y.toString()}
 const binaryParams = {lock_range: true, entity_center: true, advanced: true}
-
-const defaultParams = {...defaultView}
-export function viewToString(view: ViewDef) {
-  const p: string[] = []
-  Object.keys(view).forEach(v => {
-    if (v === 'entities_select') return
-    if (v === 'x' || v === 'y') {
-      const value = view[v].toString()
-      if (value !== defaultXY[v]) {
-        p.push(v + '=' + value)
-      }
-    } else if (v === 'formula_params') {
-      const d = defaultView.formula_params
-      const params = view.formula_params
-      Object.keys(params).forEach(paramName => {
-        if (paramName in d && params[paramName] !== d[paramName]) {
-          p.push(paramName + '=' + params[paramName])
-        }
-      })
-    } else {
-      const value = view[v as 'color']
-      if (value !== defaultParams[v as 'color']) {
-        p.push(v + '=' + value)
-      }
-    }
-  })
-  return '?' + p.join('&')
-}
-const updateUrlParams = (view: ViewDef) => {
-  requestAnimationFrame(() => window.history.replaceState(void 0, '', viewToString(view)))
-}
+const variableParams = {y_panels: true, x_panels: true, lines: true, colors: true}
 
 export const ViewActionContext = createContext<ActionDispatch<[action: ViewAction]>>(() => {})
 export const ViewContext = createContext<ViewDef | null>(null)
 export const FullDataContext = createContext(new ColumnTable({}))
 export const SelectedContext = createContext(new ColumnTable({}))
 
-export const splitComponents = ['x_panels', 'y_panels', 'symbol', 'color']
 const timeSelectors = {
   first: 'min',
   last: 'max',
@@ -138,18 +85,69 @@ function applyVariableAction(variable: Variable, action: VariableAction) {
     }
   }
 }
+function urlParamsToView(
+  defaults: {view: ViewDef; url: ViewDef},
+  selectEntities: {[key: string]: boolean},
+  allEntities: Entities,
+) {
+  const initial = {...defaults.view, x: defaults.view.x.copy(), y: defaults.view.y.copy()}
+  Object.keys(defaults.url).forEach(k => {
+    if (k in initial) {
+      const value = defaults.url[k as 'color' | 'x' | 'y' | 'formula_params']
+      if ('object' === typeof value) {
+        if (k === 'formula_params') {
+          initial.formula_params = {...value} as ActiveParams
+        } else if (k === 'x' || k === 'y') {
+          initial[k] = new Variable(value as Variable)
+        }
+      } else {
+        initial[k as 'color'] = value
+      }
+    }
+  })
+  initial.entities_select = (() => {
+    if (defaults.url.entities) {
+      const selectEntities: {[index: string]: boolean} = {}
+      defaults.url.entities.split(',').forEach(c => {
+        if (c in allEntities) {
+          selectEntities[c] = true
+        }
+      })
+      return selectEntities
+    } else {
+      return {...selectEntities}
+    }
+  })()
+  return initial
+}
 
 export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
-  const {info, categories, selectEntities, data, formula} = useContext(DataContext) as Resources
-  const urlParams = useMemo(() => {
-    if (!defaultParams.min_time) {
-      defaultView.min_time = defaultParams.min_time = '' + info.time_range.min
-      defaultView.max_time = defaultParams.max_time = '' + info.time_range.max
+  const {info, categories, meta, selectEntities, data, formula} = useContext(DataContext) as Resources
+  const defaults = useMemo(() => {
+    const view: ViewDef = {
+      lock_range: false,
+      x: new Variable('general__fiscal_year', categories),
+      y: new Variable('iFcomputed__entitlement', categories),
+      lines: 'general__district',
+      color: '',
+      symbol: '',
+      x_panels: '',
+      y_panels: '',
+      time_agg: 'all',
+      select_time: '2025',
+      entity_center: false,
+      entities: '',
+      entities_select: {},
+      min_time: '' + info.time_range.min,
+      max_time: '' + info.time_range.max,
+      profile: '',
+      profile_section: 'rev',
+      advanced: false,
+      formula_params: formula.getValues(),
     }
-    defaultView.formula_params = defaultParams.formula_params = formula.getValues()
-    defaultParams.x = new Variable(defaultParams.x, categories)
-    defaultParams.y = new Variable(defaultParams.y, categories)
-    const params = {...defaultParams}
+    const xy = {x: view.x.toString(), y: view.y.toString()}
+    const url = {...view} as ViewDef
+    url.formula_params = {...url.formula_params}
     const search = window.location.search
     if (search) {
       search
@@ -158,24 +156,58 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
         .forEach(a => {
           const parts = a.split('=')
           const e = parts[0] as keyof ViewDef
-          if (e in params.formula_params) {
-            params.formula_params[e] = +parts[1]
-          } else if (e !== 'formula_params' && e in params) {
+          if (e in url.formula_params) {
+            url.formula_params[e] = +parts[1]
+          } else if (e !== 'formula_params' && e in url) {
             if (e in binaryParams) {
-              params[e as 'lock_range'] = parts.length === 1 || parts[1] === 'true'
+              url[e as 'lock_range'] = parts.length === 1 || parts[1] === 'true'
             } else if ('x' === e || 'y' === e) {
-              params[e] = new Variable(parts[1], categories)
+              url[e] = new Variable(parts[1], categories)
+            } else if (e.endsWith('time')) {
+              url[e as 'min_time'] =
+                '' + (e === 'min_time' ? Math.max(+parts[1], +view.min_time) : Math.min(+parts[1], +view.max_time))
+            } else if (e in variableParams) {
+              url[e as 'lines'] = e in categories ? e : ''
             } else {
-              params[e as 'color'] = parts[1]
+              url[e as 'color'] = parts[1]
             }
           }
         })
     }
-    return params
-  }, [categories, info.time_range.max, info.time_range.min, formula])
+    return {view, xy, url}
+  }, [categories, info.time_range, formula])
+  const updateUrlParams = useCallback(
+    (view: ViewDef) => {
+      const p: string[] = []
+      Object.keys(view).forEach(v => {
+        if (v === 'entities_select') return
+        if (v === 'x' || v === 'y') {
+          const value = view[v].toString()
+          if (value !== defaults.xy[v]) {
+            p.push(v + '=' + value)
+          }
+        } else if (v === 'formula_params') {
+          const d = defaults.view.formula_params
+          const params = view.formula_params
+          Object.keys(params).forEach(paramName => {
+            if (paramName in d && params[paramName] !== d[paramName]) {
+              p.push(paramName + '=' + params[paramName])
+            }
+          })
+        } else {
+          const value = view[v as 'color']
+          if (value !== defaults.view[v as 'color']) {
+            p.push(v + '=' + value)
+          }
+        }
+      })
+      requestAnimationFrame(() => window.history.replaceState(void 0, '', '?' + p.join('&')))
+    },
+    [defaults.url, defaults.xy],
+  )
   const editView = (state: ViewDef, action: ViewAction) => {
     if (action.key === 'replace') {
-      updateUrlParams({...urlParams, ...action.view})
+      updateUrlParams({...defaults.url, ...action.view})
       return {...action.view}
     }
     const newState = {...state}
@@ -242,28 +274,11 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     } else if ('value' in action) {
       newState[action.key as 'color'] = action.value as string
     }
-    updateUrlParams({...urlParams, ...newState})
+    updateUrlParams({...defaults.url, ...newState})
     return newState
   }
-  const urlParamsToView = (urlParams: ViewDef) => {
-    const initial = {...defaultView, x: defaultView.x.copy(), y: defaultView.y.copy()}
-    Object.keys(urlParams).forEach(k => {
-      if (k in initial) initial[k as 'color'] = urlParams[k as 'color']
-    })
-    initial.entities_select = (() => {
-      if (urlParams.entities) {
-        const selectEntities: {[index: string]: boolean} = {}
-        urlParams.entities.split(',').forEach(c => (selectEntities[c] = true))
-        return selectEntities
-      } else {
-        return {...selectEntities}
-      }
-    })()
-    return initial
-  }
-  const [view, viewAction] = useReducer(editView, urlParamsToView(urlParams))
-  const calculated = useMemo(() => formula.run([], data, view.formula_params), [formula, view.formula_params])
-
+  const [view, viewAction] = useReducer(editView, urlParamsToView(defaults, selectEntities, meta.entities))
+  const calculated = useMemo(() => formula.run([], data, view.formula_params), [formula, view.formula_params, data])
   const selected = useMemo(() => {
     const entity_id = info.refs.entity
     const time_id = info.refs.time
