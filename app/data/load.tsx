@@ -12,7 +12,7 @@ export type Info = {
   time_range: {min: number; max: number}
   deflator: ColumnTable
 }
-export type Entities = {[index: string]: {id: string; name: string; color: string}}
+export type Entities = {[index: string]: {id: string; name: string; light: string; dark: string}}
 export type Metadata = {
   updated: string
   types: {[key: string]: VariableTypes}
@@ -173,7 +173,7 @@ export function Data({children}: Readonly<{children?: React.ReactNode}>) {
       const entities = meta.entities as unknown as {[key: string]: string[]}
       meta.entities = {}
       entities.id.forEach((id, i) => {
-        meta.entities[id] = {id, name: entities.name[i], color: entities.color[i]}
+        meta.entities[id] = {id, name: entities.name[i], light: entities.light[i], dark: entities.dark[i]}
       })
     }
     const selectEntities: {[key: string]: boolean} = {}

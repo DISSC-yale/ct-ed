@@ -3,8 +3,10 @@ import {DataContext, Resources} from './load'
 import {makeSeries} from './make_series'
 import Plot, {PlotInput} from '../parts/plot'
 import {SelectedContext, ViewContext, type ViewDef} from './view'
+import {useColorScheme} from '@mui/material'
 
-export function DataDisplay({mode}: {mode?: 'dark' | 'light'}) {
+export function DataDisplay() {
+  const {mode} = useColorScheme()
   const {info, meta} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const selected = useContext(SelectedContext)
@@ -21,11 +23,12 @@ export function DataDisplay({mode}: {mode?: 'dark' | 'light'}) {
           symbol: view.symbol,
           time: info.refs.time,
           entity: info.refs.entity,
+          mode: mode === 'dark' ? 'dark' : 'light',
         },
         meta.entities,
       ),
-    [view, selected, meta.entities, info.refs],
+    [view, selected, meta.entities, info.refs, mode],
   )
 
-  return <Plot input={series as PlotInput} view={view} modeOverride={mode} />
+  return <Plot input={series as PlotInput} view={view} />
 }

@@ -25,6 +25,7 @@ export type ViewDef = {
   profile: string
   profile_section: string
   advanced: boolean
+  formula_params: ActiveParams
 }
 
 type Operator = 'none' | '-' | '*' | '/'
@@ -54,6 +55,8 @@ export type ViewAction =
   | {key: 'lock_range' | 'entity_center' | 'advanced'; value: boolean}
   | {key: 'min_time' | 'max_time'; value: string}
   | {key: 'entities'; value: {[index: string]: boolean}}
+  | {key: 'formula.set'; value: ActiveParams}
+  | {key: 'formula'; which: string; value: number}
 
 const defaultView: ViewDef = {
   lock_range: false,
@@ -74,6 +77,7 @@ const defaultView: ViewDef = {
   profile: '',
   profile_section: 'rev',
   advanced: false,
+  formula_params: {},
 }
 const defaultXY = {x: defaultView.x.toString(), y: defaultView.y.toString()}
 const binaryParams = {lock_range: true, entity_center: true, advanced: true}
@@ -88,6 +92,14 @@ export function viewToString(view: ViewDef) {
       if (value !== defaultXY[v]) {
         p.push(v + '=' + value)
       }
+    } else if (v === 'formula_params') {
+      const d = defaultView.formula_params
+      const params = view.formula_params
+      Object.keys(params).forEach(paramName => {
+        if (paramName in d && params[paramName] !== d[paramName]) {
+          p.push(paramName + '=' + params[paramName])
+        }
+      })
     } else {
       const value = view[v as 'color']
       if (value !== defaultParams[v as 'color']) {
@@ -112,12 +124,6 @@ const timeSelectors = {
   last: 'max',
 }
 
-export const FormulaContext = createContext<ActiveParams>({})
-export const FormulaEditor = createContext<ActionDispatch<[action: FormulaEditAction]>>(() => {})
-export type FormulaEditAction =
-  | {key: 'param'; which: string; value: number | string}
-  | {key: 'set'; value: ActiveParams}
-
 function applyVariableAction(variable: Variable, action: VariableAction) {
   if (action.part === 'selection') {
     variable.setSelection(action.value)
@@ -141,6 +147,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       defaultView.min_time = defaultParams.min_time = '' + info.time_range.min
       defaultView.max_time = defaultParams.max_time = '' + info.time_range.max
     }
+    defaultView.formula_params = defaultParams.formula_params = formula.values
     defaultParams.x = new Variable(defaultParams.x, categories)
     defaultParams.y = new Variable(defaultParams.y, categories)
     const params = {...defaultParams}
@@ -152,7 +159,9 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
         .forEach(a => {
           const parts = a.split('=')
           const e = parts[0] as keyof ViewDef
-          if (e in params) {
+          if (e in params.formula_params) {
+            params.formula_params[e] = +parts[1]
+          } else if (e !== 'formula_params' && e in params) {
             if (e in binaryParams) {
               params[e as 'lock_range'] = parts.length === 1 || parts[1] === 'true'
             } else if ('x' === e || 'y' === e) {
@@ -224,6 +233,13 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     } else if (action.key === 'flip_panels') {
       newState.x_panels = state.y_panels
       newState.y_panels = state.x_panels
+    } else if (action.key.startsWith('formula')) {
+      if (action.key === 'formula.set') {
+        newState.formula_params = action.value
+      } else if (action.key === 'formula') {
+        newState.formula_params[action.which] = action.value
+      }
+      newState.formula_params = {...newState.formula_params}
     } else if ('value' in action) {
       newState[action.key as 'color'] = action.value as string
     }
@@ -247,18 +263,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
     return initial
   }
   const [view, viewAction] = useReducer(editView, urlParamsToView(urlParams))
-
-  const editParams = (state: ActiveParams, action: FormulaEditAction) => {
-    if (action.key === 'set') {
-      const newState = {...action.value}
-      return newState
-    } else {
-      state[action.which] = action.value
-    }
-    return {...state}
-  }
-  const [formulaParams, formulaAction] = useReducer(editParams, formula.values)
-  const calculated = useMemo(() => formula.run([], data, formulaParams), [formula, formulaParams])
+  const calculated = useMemo(() => formula.run([], data, view.formula_params), [formula, view.formula_params])
 
   const selected = useMemo(() => {
     const entity_id = info.refs.entity
@@ -289,13 +294,9 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
   return (
     <ViewActionContext.Provider value={viewAction}>
       <ViewContext.Provider value={view}>
-        <FormulaEditor.Provider value={formulaAction}>
-          <FormulaContext.Provider value={formulaParams}>
-            <FullDataContext.Provider value={calculated}>
-              <SelectedContext.Provider value={selected}>{children}</SelectedContext.Provider>
-            </FullDataContext.Provider>
-          </FormulaContext.Provider>
-        </FormulaEditor.Provider>
+        <FullDataContext.Provider value={calculated}>
+          <SelectedContext.Provider value={selected}>{children}</SelectedContext.Provider>
+        </FullDataContext.Provider>
       </ViewContext.Provider>
     </ViewActionContext.Provider>
   )

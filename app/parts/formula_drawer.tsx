@@ -2,10 +2,10 @@ import {Close} from '@mui/icons-material'
 import {Box, Button, Card, CardActions, CardContent, CardHeader, Drawer, IconButton, Typography} from '@mui/material'
 import {useCallback, useContext, useEffect, useState} from 'react'
 import FormulaMenu from '../data/formula_menu'
-import {FormulaEditor} from '../data/view'
 import {background} from '../data/load'
 import type {Formula} from '../data/formula'
 import {FormulaGraphDisplay} from './formula_graph_display'
+import {ViewActionContext} from '../data/view'
 
 let resizeAnimationFrame = -1
 const heightTracker = {value: 0}
@@ -22,7 +22,7 @@ export function FormulaDrawer({
   setHeight: (height: number) => void
   rightPos: number
 }) {
-  const editFormula = useContext(FormulaEditor)
+  const viewAction = useContext(ViewActionContext)
   heightTracker.value = height
   const resize = useCallback(
     (e: MouseEvent) => {
@@ -119,7 +119,7 @@ export function FormulaDrawer({
             <FormulaGraphDisplay />
             <Button
               onClick={() => {
-                editFormula({key: 'set', value: (background.formula as Formula).reset()})
+                viewAction({key: 'formula.set', value: (background.formula as Formula).reset()})
               }}
             >
               Reset

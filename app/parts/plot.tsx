@@ -172,7 +172,15 @@ export default function Plot({
     }
     if (chart)
       chart.on('click', params => {
-        if (Array.isArray(params.data)) {
+        if (params.componentType === 'legend') {
+          const s = params.seriesIndex && series[params.seriesIndex]
+          if (s && s.data) {
+            const id = (s.data[0] as string[])[indices[info.refs.entity]]
+            if (id in meta.entities) {
+              viewAction({key: 'entities', value: {[id]: true}})
+            }
+          }
+        } else if (Array.isArray(params.data)) {
           const id = params.data[indices[info.refs.entity]] as string
           if (id in meta.entities) {
             viewAction({key: 'profile', value: id})
@@ -297,6 +305,8 @@ export default function Plot({
                 orient: 'vertical',
                 type: 'scroll',
                 data: seriesNames.length > 1 ? seriesNames : [],
+                triggerEvent: true,
+                silent: false,
               },
               backgroundColor: colors.bg,
               tooltip: {

@@ -33,10 +33,19 @@ function updateRanges(name: string, range: number[], data: ColumnTable) {
 export function makeSeries(
   selectData: ColumnTable,
   view: ViewDef,
-  refs: {panelX: string; panelY: string; lines: string; color: string; symbol: string; time: string; entity: string},
+  refs: {
+    panelX: string
+    panelY: string
+    lines: string
+    color: string
+    symbol: string
+    time: string
+    entity: string
+    mode?: 'light' | 'dark'
+  },
   entities: Entities,
 ) {
-  const {panelX, panelY, color, symbol, lines, time, entity} = refs
+  const {panelX, panelY, color, symbol, lines, time, entity, mode} = refs
   const xPanelLevels = panelX ? unique(selectData, panelX) : ['']
   const yPanelLevels = panelY ? unique(selectData, panelY) : ['']
   const data: (LineSeriesOption | BarSeriesOption)[] = []
@@ -131,7 +140,7 @@ export function makeSeries(
               if (entity) {
                 series.id += entity.id
                 series.name = entity.name
-                series.color = entity.color
+                series.color = entity[mode || 'dark']
               } else {
                 series.id += series.name = '' + lineLevel
               }
