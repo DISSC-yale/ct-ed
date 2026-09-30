@@ -1,7 +1,7 @@
 'use client'
 
 import {Box, Button, Card, CardHeader, Drawer, IconButton} from '@mui/material'
-import {useState} from 'react'
+import {useRef, useState} from 'react'
 import {Close} from '@mui/icons-material'
 import NavBar from './parts/nav_bar'
 import {Export} from './parts/export'
@@ -13,16 +13,16 @@ import {ProfileDisplay} from './parts/profile'
 
 const MENU_WIDTH = 350
 const DRAWER_HEIGHT = 33
-let resizeAnimationFrame: number | NodeJS.Timeout = -1
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(true)
   const [rightPos, setRightPos] = useState(MENU_WIDTH)
   const [drawerHeight, setDrawerHeight] = useState(DRAWER_HEIGHT)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const resizeAnimationFrame = useRef<number | NodeJS.Timeout>(-1)
   const resize = () => {
-    resizeAnimationFrame = setInterval(() => window.dispatchEvent(new Event('resize')), 100)
-    setTimeout(() => clearInterval(resizeAnimationFrame), 500)
+    resizeAnimationFrame.current = setInterval(() => window.dispatchEvent(new Event('resize')), 100)
+    setTimeout(() => clearInterval(resizeAnimationFrame.current), 500)
   }
   setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
   return (

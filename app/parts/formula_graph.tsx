@@ -1,17 +1,12 @@
 import {Box, useColorScheme} from '@mui/material'
-import {useEffect, useMemo, useRef} from 'react'
-import {background} from '../data/load'
+import {useContext, useEffect, useMemo, useRef} from 'react'
 import {use, init, getInstanceByDom} from 'echarts/core'
 import {GraphChart} from 'echarts/charts'
-import type {Formula} from '../data/formula'
-
-const itemStyles = {
-  Paramerter: {color: '#b3b3b3'},
-  Step: {color: '#72a4ff'},
-}
+import {colors} from '../data/make_series'
+import {DataContext, type Resources} from '../data/load'
 
 export default function FormulaGraph() {
-  const formula = background.formula as Formula
+  const {formula} = useContext(DataContext) as Resources
   const {mode} = useColorScheme()
   const container = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -29,10 +24,13 @@ export default function FormulaGraph() {
       id: string
       name: string
       description: string
-      category: 'Parameter' | 'Step'
+      category: string
       value: string | number | number[][]
     }[] = []
-    const links: {source: string; target: string; value?: number | number[][]}[] = []
+    const links: {source: string; target: string; description: string; value: string | number | number[][]}[] = []
+    const categoryTypes: {name: string; lineStyle: {color: string}}[] = []
+    const categories: Set<string> = new Set()
+    const dataRefs: Set<string> = new Set()
     Object.keys(formula.param_specs).forEach(param => {
       const p = formula.param_specs[param]
       const id = 'p.' + param
@@ -40,13 +38,14 @@ export default function FormulaGraph() {
         id,
         name: id,
         description: p.label,
-        category: 'Parameter',
+        category: p.category + ' Parameter',
         value: p.value,
       })
       p.used_by.forEach(step =>
         links.push({
           source: id,
           target: 's.' + step,
+          description: `${id} -> s.${step}`,
           value: p.value,
         }),
       )
@@ -58,32 +57,60 @@ export default function FormulaGraph() {
         name: id,
         category: 'Step',
         description: id,
-        value: step.equation,
+        value: step.equation_raw,
       })
       step.parents.forEach(parent =>
         links.push({
           source: 's.' + parent,
           target: id,
+          description: `s.${parent} -> ${id}`,
+          value: '',
         }),
       )
+      step.data_refs.forEach(data_ref => {
+        dataRefs.add(data_ref)
+        links.push({
+          source: 'd.' + data_ref,
+          target: id,
+          description: `d.${data_ref} -> ${id}`,
+          value: '',
+        })
+      })
     })
-    return {data, links}
-  }, [formula])
+    dataRefs.forEach(name => {
+      const id = 'd.' + name
+      data.push({
+        id,
+        name: id,
+        category: 'Data',
+        description: name,
+        value: '',
+      })
+    })
+    data.forEach(d => categories.add(d.category))
+    const colorSet = colors[mode === 'dark' ? 'dark' : 'light']
+    ;[...categories].forEach((cat, i) => {
+      categoryTypes.push({
+        name: cat,
+        lineStyle: {color: colorSet[i % 9]},
+      })
+    })
+    return {data, links, categoryTypes}
+  }, [formula, mode])
   useEffect(() => {
     if (container.current) {
       const chart = getInstanceByDom(container.current)
       if (chart) {
-        const {data, links} = series
+        const {data, links, categoryTypes} = series
         const darkMode = mode === 'dark'
-        const colors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
+        const baseColors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
         chart.setOption(
           {
             legend: {
               align: 'right',
-              right: 'right',
+              top: 20,
+              right: 20,
               orient: 'vertical',
-              type: 'plain',
-              pageButtonGap: 10,
             },
             tooltip: {
               confine: true,
@@ -97,35 +124,24 @@ export default function FormulaGraph() {
                 return item.marker + item.data.description + '</br><span>' + item.value + '</span>'
               },
             },
-            backgroundColor: colors.bg,
+            backgroundColor: baseColors.bg,
             series: [
               {
                 type: 'graph',
                 layout: 'force',
                 data,
                 links,
-                categories: [
-                  {name: 'Parameter', itemStyle: itemStyles.Paramerter},
-                  {name: 'Step', itemStyle: itemStyles.Step},
-                ],
+                categories: categoryTypes,
                 roam: true,
                 label: {
                   show: true,
                   position: 'top',
                 },
-                emphasis: {
-                  focus: 'adjacency',
-                  itemStyle: {opacity: 1},
-                  label: {opacity: 1},
-                  lineStyle: {
-                    width: 10,
-                    opacity: 1,
-                  },
-                },
-                blur: {
-                  itemStyle: {opacity: 0.3},
-                  lineStyle: {opacity: 0.3},
-                  label: {opacity: 0.3},
+                force: {
+                  repulsion: 100,
+                  gravity: 0.05,
+                  edgeLength: 50,
+                  friction: 0.5,
                 },
                 edgeSymbol: ['circle', 'arrow'],
                 edgeSymbolSize: [4, 10],
@@ -141,6 +157,6 @@ export default function FormulaGraph() {
         )
       }
     }
-  }, [mode])
+  }, [mode, series])
   return <Box ref={container} sx={{width: '100%', height: '100%', minHeight: '10px'}} />
 }

@@ -43,29 +43,27 @@ export function sectionOrder(section: string) {
 export function DataMenu() {
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
-  const full = useContext(DataContext) as Resources
+  const {categories, selectCategories, info, variable_types, variables} = useContext(DataContext) as Resources
   const allVariables = useMemo(() => {
-    return Object.values(full[view.advanced ? 'categories' : 'selectCategories'])
+    return Object.values(view.advanced ? categories : selectCategories)
       .map(cat => {
         cat.searchString = JSON.stringify({key: cat.key, ...cat.parts, ...cat.labels})
         return cat
       })
       .sort((a, b) => sectionOrder(a.labels.section) - sectionOrder(b.labels.section))
-  }, [full.categories, full.selectCategories, view.advanced])
+  }, [categories, selectCategories, view.advanced])
   const lineOptions = useMemo(() => {
     const options: {[key: string]: SelectOption} = {}
-    ;[
-      full.info.refs.entity,
-      ...full.variable_types.categorical.map(x => x.id),
-      ...full.variable_types.binary.map(x => x.id),
-    ].forEach(id => {
-      options[id] = {
-        key: id,
-        label: id in full.variables ? full.variables[id].labels.full : id,
-      } as SelectOption
-    })
+    ;[info.refs.entity, ...variable_types.categorical.map(x => x.id), ...variable_types.binary.map(x => x.id)].forEach(
+      id => {
+        options[id] = {
+          key: id,
+          label: id in variables ? variables[id].labels.full : id,
+        } as SelectOption
+      },
+    )
     return options
-  }, [full.variable_types, full.variables, full.info.refs.entity])
+  }, [variable_types, variables, info.refs.entity])
   const options = Object.values(lineOptions)
   const showPanelControls = !!view.x_panels || !!view.y_panels
   return (
@@ -89,22 +87,16 @@ export function DataMenu() {
             {view.advanced ?
               <Stack>
                 <Typography>Y-Axis</Typography>
-                <VariableControls name="y" variable={view.y} allVariables={allVariables} categories={full.categories} />
+                <VariableControls name="y" variable={view.y} allVariables={allVariables} categories={categories} />
                 <Stack direction="row" sx={{justifyContent: 'space-between', alignItems: 'baseline'}}>
                   <Typography>X-Axis</Typography>
                   <IconButton aria-label="flip axes" onClick={() => viewAction({key: 'flip_axes'})}>
                     <FlipCameraAndroid />
                   </IconButton>
                 </Stack>
-                <VariableControls name="x" variable={view.x} allVariables={allVariables} categories={full.categories} />
+                <VariableControls name="x" variable={view.x} allVariables={allVariables} categories={categories} />
               </Stack>
-            : <VariableControls
-                name="y"
-                variable={view.y}
-                allVariables={allVariables}
-                categories={full.selectCategories}
-              />
-            }
+            : <VariableControls name="y" variable={view.y} allVariables={allVariables} categories={selectCategories} />}
             {view.advanced ?
               <>
                 <Typography>Lines</Typography>
@@ -192,7 +184,7 @@ export function DataMenu() {
                 size="small"
                 fullWidth
                 value={view.select_time}
-                slotProps={{htmlInput: {min: full.info.time_range.min, max: full.info.time_range.max, step: 1}}}
+                slotProps={{htmlInput: {min: info.time_range.min, max: info.time_range.max, step: 1}}}
                 onChange={e => viewAction({key: 'select_time', value: e.target.value})}
               />
             : <Stack direction="row" spacing={1}>
@@ -202,7 +194,7 @@ export function DataMenu() {
                   size="small"
                   fullWidth
                   value={view.min_time}
-                  slotProps={{htmlInput: {min: full.info.time_range.min, max: view.max_time, step: 1}}}
+                  slotProps={{htmlInput: {min: info.time_range.min, max: view.max_time, step: 1}}}
                   onChange={e => viewAction({key: 'min_time', value: e.target.value})}
                 />
                 <TextField
@@ -211,7 +203,7 @@ export function DataMenu() {
                   size="small"
                   fullWidth
                   value={view.max_time}
-                  slotProps={{htmlInput: {min: view.min_time, max: full.info.time_range.max, step: 1}}}
+                  slotProps={{htmlInput: {min: view.min_time, max: info.time_range.max, step: 1}}}
                   onChange={e => viewAction({key: 'max_time', value: e.target.value})}
                 />
               </Stack>

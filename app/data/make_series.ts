@@ -5,7 +5,10 @@ import {Panel, PlotInput} from '../parts/plot'
 import {unique} from '../utils'
 import type {ViewDef} from './view'
 
-const colors = ['#FDB8C1', '#30685B', '#818231', '#E09651', '#577646', '#FAA588', '#B28D2E', '#185461', '#F9CCF9']
+export const colors = {
+  dark: ['#FFCE66', '#80E6FF', '#DF9D56', '#5F88C3', '#9F503E', '#5062A1', '#773339', '#6EB5E1', '#C07348'],
+  light: ['#964A35', '#60A5DF', '#5F1F0A', '#327FA5', '#C87970', '#9EB0FF', '#FFACAC', '#1F5169', '#371000'],
+}
 const symbols = ['circle', 'triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow']
 const categoricalType = {time: true, binary: true, categorical: true}
 
@@ -151,12 +154,12 @@ export function makeSeries(
                 series.id += '' + colorLevel
                 series.name = '' + colorLevel
               }
-              series.color = colors[colorMap[colorLevel]]
+              series.color = colors[mode || 'dark'][colorMap[colorLevel]]
             }
             if (sy.startsWith('_y')) {
               series.name += (series.name ? ', ' : '') + yRefs.display[sy]
               if (!series.color) {
-                series.color = colors[syi % 7]
+                series.color = colors[mode || 'dark'][syi % 9]
               } else {
                 ;(series as LineSeriesOption).symbol = symbols[syi % 7]
               }
@@ -164,12 +167,12 @@ export function makeSeries(
             if (sx.startsWith('_x')) {
               series.name += (series.name ? ', ' : '') + xRefs.display[sx]
               if (!series.color) {
-                series.color = colors[sxi % 7]
+                series.color = colors[mode || 'dark'][sxi % 9]
               } else if (!(series as LineSeriesOption).symbol) {
                 ;(series as LineSeriesOption).symbol = symbols[sxi % 7]
               }
             }
-            if (!series.color) series.color = colors[0]
+            if (!series.color) series.color = colors[mode || 'dark'][0]
             if (!(series as LineSeriesOption).symbol) (series as LineSeriesOption).symbol = symbols[0]
             const seriesData: (string | number)[][] = []
             series.data = seriesData

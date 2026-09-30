@@ -1,14 +1,11 @@
 import {Close} from '@mui/icons-material'
 import {Box, Button, Card, CardActions, CardContent, CardHeader, Drawer, IconButton, Typography} from '@mui/material'
-import {useCallback, useContext, useEffect, useState} from 'react'
+import {useCallback, useContext, useEffect, useRef, useState} from 'react'
 import FormulaMenu from '../data/formula_menu'
-import {background} from '../data/load'
-import type {Formula} from '../data/formula'
 import {FormulaGraphDisplay} from './formula_graph_display'
 import {ViewActionContext} from '../data/view'
+import {DataContext, type Resources} from '../data/load'
 
-let resizeAnimationFrame = -1
-const heightTracker = {value: 0}
 export function FormulaDrawer({
   open,
   setOpen,
@@ -23,17 +20,16 @@ export function FormulaDrawer({
   rightPos: number
 }) {
   const viewAction = useContext(ViewActionContext)
-  heightTracker.value = height
+  const {formula} = useContext(DataContext) as Resources
+  const resizeAnimationFrame = useRef(-1)
   const resize = useCallback(
     (e: MouseEvent) => {
       const value = Math.max(18, Math.min(Math.ceil((1 - e.y / window.innerHeight) * 100), 87))
-      if (value !== heightTracker.value) {
-        cancelAnimationFrame(resizeAnimationFrame)
-        resizeAnimationFrame = requestAnimationFrame(() => {
-          setHeight(value)
-          window.dispatchEvent(new Event('resize'))
-        })
-      }
+      cancelAnimationFrame(resizeAnimationFrame.current)
+      resizeAnimationFrame.current = requestAnimationFrame(() => {
+        setHeight(value)
+        window.dispatchEvent(new Event('resize'))
+      })
     },
     [setHeight],
   )
@@ -49,10 +45,10 @@ export function FormulaDrawer({
   )
   useEffect(() => {
     const endResize = (e: MouseEvent) => {
-      if (resizeAnimationFrame !== -1) {
-        cancelAnimationFrame(resizeAnimationFrame)
+      if (resizeAnimationFrame.current !== -1) {
+        cancelAnimationFrame(resizeAnimationFrame.current)
         setResizing(false)
-        resizeAnimationFrame = -1
+        resizeAnimationFrame.current = -1
         document.body.style.cursor = 'default'
         window.removeEventListener('mousemove', resize)
         const value = Math.max(18, Math.min(Math.ceil((1 - e.y / window.innerHeight) * 100), 87))
@@ -108,7 +104,7 @@ export function FormulaDrawer({
             title="Entitlement Formula"
             subheader={
               <Typography variant="caption" sx={{opacity: 0.75}}>
-                These apply to the "Computed" variables, which are version of the ECS formula components.
+                These apply to the &quot;Computed&quot; variables, which are version of the ECS formula components.
               </Typography>
             }
           />
@@ -119,7 +115,7 @@ export function FormulaDrawer({
             <FormulaGraphDisplay />
             <Button
               onClick={() => {
-                viewAction({key: 'formula.set', value: (background.formula as Formula).reset()})
+                viewAction({key: 'formula.set', value: formula.reset()})
               }}
             >
               Reset

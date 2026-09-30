@@ -93,7 +93,7 @@
         "step_size": 1,
         "value": 3
       },
-      "need": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
+      "frlp": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
       "engl_mhi": {
         "label": "B. Equalized net grand list per capita and median household income threshold.",
         "category": "Primary Weight",
@@ -123,7 +123,6 @@
         "step_size": 0.1,
         "value": 0.15
       },
-      "poverty": {"label": "Poverty portion of free & reduced lunch.", "category": "Poverty", "value": 0.3},
       "frpl_limit": {"label": "Free & reduced lunch limiter.", "category": "Poverty", "value": 0.75},
       "frpl_concentration": {
         "label": "Free & reduced lunch concentration adjustment factor.",
@@ -209,24 +208,24 @@
     },
     "step_history": {
       "2018": {
-        "total_need_students": "d.resident_students+s.poverty+s.ell_students+round(s.poverty_concentrated_adj, p.digits)",
+        "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+round(s.poverty_concentrated_adj, p.digits)",
         "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-(d.actual_fy2017*.78)",
         "entitlement": "s.funding_adjustment+(d.actual_fy2017*.78)"
       },
       "2019": {
-        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
         "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017"
       },
       "2020": {
-        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
         "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
         "more_than_last": "s.fully_funded_grant > d.actual_fy2017"
       },
       "2021": {
-        "total_need_students": "d.resident_students+s.poverty+s.ell_students+s.poverty_concentrated_adj",
+        "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
         "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
         "more_than_last": "s.fully_funded_grant > d.actual_fy2017",
@@ -239,7 +238,7 @@
     },
     "steps": {
       "prior_entitlement": "s.entitlement|d.prior_entitlement",
-      "poverty": "round(d.frpl_students*p.need, p.digits)",
+      "frpl_students": "round(d.frpl_students*p.frlp, p.digits)",
       "resident_students": "round(d.resident_students*p.resident, p.digits)",
       "high_poverty": "round(limit(d.frpl_students-s.resident_students, 0)*p.excess_resident, p.digits)",
       "poverty_portion": "d.frpl_students/d.resident_students",
@@ -247,8 +246,7 @@
       "poverty_concentrated": "d.resident_students*s.poverty_limit",
       "poverty_concentrated_adj": "s.poverty_concentrated*p.frpl_concentration",
       "ell_students": "round(d.ell_students*p.ell, p.digits)",
-      "frpl_students": "round(d.frpl_students*p.need, p.digits)",
-      "total_need_students": "d.resident_students+s.poverty+s.high_poverty+s.ell_students",
+      "total_need_students": "d.resident_students+s.frpl_students+s.high_poverty+s.ell_students",
       "engl_pc": "round(d.engl_3yr_avg/d.total_population, p.digits)",
       "engl_agg": "round(median(s.engl_pc)*p.engl_mhi, p.digits)",
       "engl_adjustment": "round(s.engl_pc/s.engl_agg, p.adjustment_digits)",

@@ -1,8 +1,8 @@
 import {type ActionDispatch, createContext, useContext, useMemo, useReducer} from 'react'
-import {background, DataContext, Resources} from './load'
+import {DataContext, Resources} from './load'
 import {ColumnTable} from 'arquero'
 import {Variable, type VariableInfo} from './variable'
-import {Formula, type ActiveParams} from './formula'
+import type {ActiveParams} from './formula'
 
 export type Variants = 'raw' | 'log' | 'percent'
 export type TimeAgg = 'all' | 'first' | 'specified' | 'last' | 'mean' | 'median'
@@ -140,14 +140,13 @@ function applyVariableAction(variable: Variable, action: VariableAction) {
 }
 
 export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
-  const {info, categories, selectEntities, data} = useContext(DataContext) as Resources
-  const formula = background.formula as Formula
+  const {info, categories, selectEntities, data, formula} = useContext(DataContext) as Resources
   const urlParams = useMemo(() => {
     if (!defaultParams.min_time) {
       defaultView.min_time = defaultParams.min_time = '' + info.time_range.min
       defaultView.max_time = defaultParams.max_time = '' + info.time_range.max
     }
-    defaultView.formula_params = defaultParams.formula_params = formula.values
+    defaultView.formula_params = defaultParams.formula_params = formula.getValues()
     defaultParams.x = new Variable(defaultParams.x, categories)
     defaultParams.y = new Variable(defaultParams.y, categories)
     const params = {...defaultParams}
@@ -173,7 +172,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
         })
     }
     return params
-  }, [categories, info.time_range.max, info.time_range.min])
+  }, [categories, info.time_range.max, info.time_range.min, formula])
   const editView = (state: ViewDef, action: ViewAction) => {
     if (action.key === 'replace') {
       updateUrlParams({...urlParams, ...action.view})

@@ -1,8 +1,8 @@
 import {useContext, useMemo, type ChangeEvent, type ReactElement} from 'react'
 import {Box, Stack, TextField, Tooltip, Typography} from '@mui/material'
-import type {Formula, FormulaParam} from './formula'
-import {background} from './load'
+import type {FormulaParam} from './formula'
 import {ViewActionContext, ViewContext, type ViewDef} from './view'
+import {DataContext, type Resources} from './load'
 
 function makeInput(
   name: string,
@@ -20,7 +20,7 @@ function makeInput(
 }
 
 export default function FormulaMenu() {
-  const formula = background.formula as Formula
+  const {formula} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const params = formula.param_specs

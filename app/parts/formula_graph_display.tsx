@@ -1,5 +1,5 @@
 import {Close} from '@mui/icons-material'
-import {Box, Button, Dialog, DialogContent, DialogTitle, IconButton} from '@mui/material'
+import {Button, Dialog, DialogContent, DialogTitle, IconButton} from '@mui/material'
 import {useState} from 'react'
 import dynamic from 'next/dynamic'
 

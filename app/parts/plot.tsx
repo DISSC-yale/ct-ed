@@ -92,9 +92,8 @@ const panelSpacing = {
   gapY: 100,
   legendWidth: 0,
 }
-const panelContainer: {current: Panel[]} = {current: []}
 function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
-  const topGap = panelSpacing[panelContainer.current[0].label === '' ? 'topNoLabel' : 'top']
+  const topGap = panelSpacing[grid[0].label === '' ? 'topNoLabel' : 'top']
   const frameHeight = frame.height - (topGap + panelSpacing.bottom + panelSpacing.gapY * grid[0].nYLevels)
   const panelHeight = frameHeight / grid[0].nYLevels
   const frameWidth = frame.width - (panelSpacing.left + panelSpacing.legendWidth + panelSpacing.gapX * grid[0].nXLevels)
@@ -114,7 +113,6 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
   })
   return {title, grid}
 }
-const indices: {[key: string]: number} = {}
 
 function resolveId(name: string, id: string, variable: Variable) {
   if (id === '' || id === name) {
@@ -126,15 +124,7 @@ function resolveId(name: string, id: string, variable: Variable) {
   return id
 }
 
-export default function Plot({
-  input,
-  view,
-  modeOverride,
-}: {
-  input: PlotInput
-  view: ViewDef
-  modeOverride?: 'dark' | 'light'
-}) {
+export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
   useEffect(() => {
     use([
       DatasetComponent,
@@ -152,13 +142,12 @@ export default function Plot({
   const {mode} = useColorScheme()
   const viewAction = useContext(ViewActionContext)
   const {info, meta, variables} = useContext(DataContext) as Resources
-  const useMode = modeOverride || mode
   const {series, panels, range, varIndices} = input
-  Object.keys(varIndices).forEach(k => (indices[k] = varIndices[k]))
-  panelContainer.current = panels
+  const currentSeries = useRef(series)
+  const indices = useRef<{[key: string]: number}>({})
   const container = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const chart = container.current ? init(container.current, useMode, {renderer: 'canvas'}) : null
+    const chart = container.current ? init(container.current, mode, {renderer: 'canvas'}) : null
     const resize = () => {
       if (chart) {
         const frame = chart.getDom().getBoundingClientRect()
@@ -173,15 +162,15 @@ export default function Plot({
     if (chart)
       chart.on('click', params => {
         if (params.componentType === 'legend') {
-          const s = params.seriesIndex && series[params.seriesIndex]
+          const s = params.seriesIndex && currentSeries.current[params.seriesIndex]
           if (s && s.data) {
-            const id = (s.data[0] as string[])[indices[info.refs.entity]]
+            const id = (s.data[0] as string[])[indices.current[info.refs.entity]]
             if (id in meta.entities) {
               viewAction({key: 'entities', value: {[id]: true}})
             }
           }
         } else if (Array.isArray(params.data)) {
-          const id = params.data[indices[info.refs.entity]] as string
+          const id = params.data[indices.current[info.refs.entity]] as string
           if (id in meta.entities) {
             viewAction({key: 'profile', value: id})
           }
@@ -194,7 +183,7 @@ export default function Plot({
       }
       window.removeEventListener('resize', resize)
     }
-  }, [useMode, info.refs.entity, meta.entities, viewAction])
+  }, [mode, info.refs.entity, meta.entities, viewAction])
   const formatter = useCallback(
     ({
       marker,
@@ -207,21 +196,21 @@ export default function Plot({
       seriesId: string
       value: number[]
     }) => {
-      const entity = info.refs.entity in indices && meta.entities[value[indices[info.refs.entity]]]
+      const entity = info.refs.entity in indices.current && meta.entities[value[indices.current[info.refs.entity]]]
       const parts = seriesId.split('.')
-      let xVar = resolveId('x', parts[0].replace('_x', ''), view.x)
-      let yVar = resolveId('y', parts[2].replace('_y', ''), view.y)
+      const xVar = resolveId('x', parts[0].replace('_x', ''), view.x)
+      const yVar = resolveId('y', parts[2].replace('_y', ''), view.y)
       const xInfo = variables[xVar]
       const yInfo = variables[yVar]
       return (
         '<div class="tooltip-table">' +
         (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
         '<table>' +
-        (info.refs.time in indices && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
+        (info.refs.time in indices.current && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
           '<tr><td>' +
           variables[info.refs.time].labels.full +
           '</td><td><strong>' +
-          value[indices[info.refs.time]] +
+          value[indices.current[info.refs.time]] +
           '</strong></td></tr>'
         : '') +
         ('string' === typeof value[0] && value[0] === seriesName ?
@@ -248,6 +237,8 @@ export default function Plot({
       const chart = getInstanceByDom(container.current)
       if (chart) {
         if (series.length) {
+          Object.keys(varIndices).forEach(k => (indices.current[k] = varIndices[k]))
+          currentSeries.current = series
           const firstData = (series[0] as {data: number[][]}).data[0]
           const isBar = firstData && firstData.length && series[0].type === 'bar'
           const which =
@@ -258,7 +249,7 @@ export default function Plot({
             : 0
           assignRanges(range.x, baseXAxisOptions, view.lock_range && (!isBar || which === 0))
           assignRanges(range.y, baseYAxisOptions, view.lock_range && (!isBar || which === 1))
-          const darkMode = useMode === 'dark'
+          const darkMode = mode === 'dark'
           const colors = darkMode ? {bg: '#121212', text: '#ffffff'} : {bg: '#ffffff', text: '#000000'}
           panelSpacing.legendWidth = 0
           let legendName = ''
@@ -284,7 +275,6 @@ export default function Plot({
           }
           const frame = container.current.getBoundingClientRect()
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
-          panelContainer.current = panels
           const {title, grid} = resizePanels(frame, panels)
           const seriesNames = [...new Set(series.map(s => s.name).sort())]
           let s = series
@@ -450,7 +440,23 @@ export default function Plot({
         }
       }
     }
-  }, [useMode, panels, meta, series, view.x, view.y, view.lines, view.lock_range, formatter, range.x, range.y])
+  }, [
+    mode,
+    panels,
+    meta,
+    series,
+    view.x,
+    view.y,
+    view.lines,
+    view.lock_range,
+    info.refs.entity,
+    variables,
+    view.entities_select,
+    formatter,
+    range.x,
+    range.y,
+    varIndices,
+  ])
   setTimeout(() => window.dispatchEvent(new Event('resize')), 100)
   return (
     <Box

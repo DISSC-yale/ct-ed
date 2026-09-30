@@ -18,10 +18,18 @@ export type FormulaSpec = {
   param_history: {[key: string]: ParamValues}
   step_history: {[key: string]: {[key: string]: string}}
 }
-type FormulaStep = {params: string[]; parents: string[]; children: string[]; equation: string}
+type FormulaStep = {
+  params: string[]
+  parents: string[]
+  children: string[]
+  data_refs: string[]
+  equation: string
+  equation_raw: string
+}
 
 const rowFun = /row_(min|max|mean|median|sum)\((.*)\)(?:\s|$)/g
 const paramPattern = /p\.([a-zA-Z_]+)/g
+const datarefPattern = /d\.([a-zA-Z0-9_]+)/g
 const listSep = /,\s*/g
 
 export class Formula {
@@ -82,12 +90,15 @@ export class Formula {
     })
     const steps = spec.steps || {}
     Object.keys(steps).forEach(name => {
-      const {p, eq, translated} = this.extractParams(steps[name])
+      const equation = steps[name]
+      const {p, eq, translated} = this.extractParams(equation)
       const entry: FormulaStep = {
         params: p,
         parents: [],
         children: [],
+        data_refs: this.extractDataRefs(equation),
         equation: translated,
+        equation_raw: equation,
       }
       entry.params.forEach(p => {
         if (p in this.param_specs) {
@@ -119,9 +130,17 @@ export class Formula {
     })
     return this.values
   }
+  getValues() {
+    const values: ActiveParams = {}
+    Object.keys(this.param_specs).forEach(name => {
+      const param = this.param_specs[name]
+      values[name] = 'number' === typeof param.value ? param.value : renderBreakpointParam(param as BreakpointParam)
+    })
+    return values
+  }
   extractParams(e: string) {
     const p: string[] = []
-    let eq = e
+    const eq = e
     let m
     while ((m = paramPattern.exec(e))) p.push(m[1])
     let translated = eq.replaceAll('d.', `d.${this.section}`).replaceAll('s.', 'd.computed__')
@@ -132,6 +151,12 @@ export class Formula {
       )
     }
     return {p, eq, translated}
+  }
+  extractDataRefs(e: string) {
+    const refs: string[] = []
+    let m
+    while ((m = datarefPattern.exec(e))) refs.push(m[1])
+    return refs
   }
   appendStep(
     name: string,
@@ -224,10 +249,7 @@ export class Formula {
     for (let i = times.length; i--; ) {
       const time = times[i]
       sequence.forEach(name => {
-        const step = this.appendStep(name, time, state)
-        // step.children.forEach(child => {
-        //   this.appendStep(child, time, state)
-        // })
+        this.appendStep(name, time, state)
       })
       Object.keys(calculatedCols).forEach(col => {
         const d = data.column(col) as number[]

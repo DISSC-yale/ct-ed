@@ -20,7 +20,7 @@ import {
 } from '@mui/material'
 import {useContext, useMemo, type ReactElement} from 'react'
 import {DataContext, type Resources} from '../data/load'
-import {entityOptions, filterOptions, type EntityOption} from './filter_entities'
+import {filterOptions, type EntityOption} from './filter_entities'
 import {FullDataContext, ViewActionContext, ViewContext, type ViewDef} from '../data/view'
 import {formatValue} from '../utils'
 import type {VariableInfo} from '../data/variable'
@@ -158,17 +158,14 @@ export function ProfileDisplay() {
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const time = view.select_time || '' + 2025
-  const allEntities: EntityOption[] = useMemo(
-    () =>
-      Object.keys(meta.entities).map(id => {
-        if (!(id in entityOptions)) {
-          const entity = meta.entities[id]
-          entityOptions[id] = {key: id, searchString: JSON.stringify(entity), name: entity.name}
-        }
-        return entityOptions[id]
-      }),
-    [meta.entities],
-  )
+  const allEntities: {[key: string]: EntityOption} = useMemo(() => {
+    const o: {[keys: string]: {key: string; name: string; searchString: string}} = {}
+    Object.keys(meta.entities).forEach(id => {
+      const entity = meta.entities[id]
+      o[id] = {key: id, searchString: JSON.stringify(entity), name: entity.name}
+    })
+    return o
+  }, [meta.entities])
   const summaries = useMemo(() => {
     const formulas: {[key: string]: string} = {}
     const vars = Object.values(view.advanced ? categories : selectCategories).sort(
@@ -253,12 +250,24 @@ export function ProfileDisplay() {
       })
       return {sections, catMap, section}
     }
-  }, [variables, summaries, view.profile, view.profile_section, data, info.refs.entity, info.refs.time, time])
+  }, [
+    variables,
+    summaries,
+    view.profile,
+    view.profile_section,
+    data,
+    info.refs.entity,
+    info.refs.time,
+    time,
+    categories,
+    selectCategories,
+    view.advanced,
+  ])
   const setProfile = (entity: string) => viewAction({key: 'profile', value: entity})
   const clearProfile = () => setProfile('')
   return (
     <>
-      <Button variant="text" color="inherit" onClick={() => setProfile(allEntities[0].key)}>
+      <Button variant="text" color="inherit" onClick={() => setProfile(Object.keys(allEntities)[0])}>
         District Profile
       </Button>
       <Dialog
@@ -286,9 +295,9 @@ export function ProfileDisplay() {
             <Autocomplete
               size="small"
               fullWidth
-              options={allEntities}
+              options={Object.values(allEntities)}
               filterOptions={filterOptions}
-              value={entityOptions[view.profile || allEntities[0].key]}
+              value={allEntities[view.profile || Object.keys(allEntities)[0]]}
               onChange={(_, selection) => setProfile(selection.key)}
               disableClearable
               getOptionLabel={option => option.name}

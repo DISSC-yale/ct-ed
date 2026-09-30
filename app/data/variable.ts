@@ -119,7 +119,6 @@ export class Variable {
     if (this.adjuster && this.adjuster.operator !== 'none') {
       id += ` ${this.adjuster.operator} (${this.adjuster.variable.formula()})`
     }
-    if (this.scale) id = `scale(${id})`
     return id
   }
   addTo(name: string, data: ColumnTable, isChild?: boolean) {
@@ -144,6 +143,10 @@ export class Variable {
         names.push(colName)
         display[colName] = isChild || multiVar ? this.label() : this.category.labels.variable
         formulas[colName] = this.formula()
+        if (this.scale) {
+          formulas[colName + '_raw'] = formulas[colName]
+          formulas[colName] = `scale(${formulas[colName]})`
+        }
         aggers[colName] = `${this.crossAgg}(d.${colName})`
       }
       if (multiVar) {
@@ -162,6 +165,11 @@ export class Variable {
         })
       }
       return {names, display, aggers, data: data.derive(formulas)}
+    }
+    const f = {[name]: this.formula()}
+    if (this.scale) {
+      f[name + '_raw'] = f[name]
+      f[name] = `scale(${f[name]})`
     }
     return {
       names: [name],
@@ -292,9 +300,9 @@ export function initCustomFunctions() {
             w: {
               size: number
               index: number
-              value: (index: number, get: (row: number, data: ColumnTable, op: any) => number) => number
+              value: (index: number, get: (row: number, data: ColumnTable) => number) => number
             },
-            f: (row: number, data: ColumnTable, op: any) => number,
+            f: (row: number, data: ColumnTable) => number,
           ) => {
             if (mean === null || sd === null) {
               const v = []
