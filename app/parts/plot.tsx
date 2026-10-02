@@ -116,12 +116,13 @@ function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
 
 function resolveId(name: string, id: string, variable: Variable) {
   if (id === '' || id === name) {
-    return variable.fullId()
+    return {id: variable.fullId(), variable: variable}
   }
-  if (id.startsWith('_')) return id.replace('_', '')
+  if (id.startsWith('_')) return {id: id.replace('_', ''), variable: variable}
   const index = +id.replace('_', '')
-  if ('undefined' !== typeof index) return variable.additional[index].fullId()
-  return id
+  if ('undefined' !== typeof index)
+    return {id: variable.additional[index].fullId(), variable: variable.additional[index]}
+  return {id, variable: variable}
 }
 
 export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
@@ -200,8 +201,8 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
       const parts = seriesId.split('.')
       const xVar = resolveId('x', parts[0].replace('_x', ''), view.x)
       const yVar = resolveId('y', parts[2].replace('_y', ''), view.y)
-      const xInfo = variables[xVar]
-      const yInfo = variables[yVar]
+      const xInfo = variables[xVar.id]
+      const yInfo = variables[yVar.id]
       return (
         '<div class="tooltip-table">' +
         (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : '') : '') +
@@ -216,7 +217,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
         ('string' === typeof value[0] && value[0] === seriesName ?
           ''
         : '<tr><td>' +
-          view.x.label() +
+          xVar.variable.label() +
           '</td><td><strong>' +
           (view.x.scale ?
             `${formatValue(value[indices.current[parts[0] + '_raw']], xInfo, view.x)} (<i>z</> = ${formatValue(value[0], xInfo, view.x)})`
@@ -225,7 +226,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
         ('string' === typeof value[1] && value[1] === seriesName ?
           ''
         : '<tr><td>' +
-          view.y.label() +
+          yVar.variable.label() +
           '</td><td><strong>' +
           (view.y.scale ?
             `${formatValue(value[indices.current[parts[2] + '_raw']], yInfo, view.y)} (<i>z</> = ${formatValue(value[1], yInfo, view.y)})`
