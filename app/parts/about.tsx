@@ -96,8 +96,9 @@ export function About({open, setOpen}: {open: boolean; setOpen: (open: boolean) 
                     </Link>
                     . You can see that in{' '}
                     <Link
-                      href="https://dissc-yale.github.io/ct-ed/?y=iFcomputed__entitlement-siFecs__entitlement&calculated_prior_after=2028"
+                      href="?y=iFcomputed__entitlement-siFecs__entitlement&calculated_prior_after=2028"
                       rel="noreferrer"
+                      target="_blank"
                     >
                       this view
                     </Link>
@@ -114,10 +115,7 @@ export function About({open, setOpen}: {open: boolean; setOpen: (open: boolean) 
                     are always used, the computed entitlements match the sheets exactly, but more differences show up as
                     earlier computed entitlements are fed forward. By default, computed prior-year entitlements are used
                     after 2022, since those differences are relatively small. You can see those difference in{' '}
-                    <Link
-                      href="https://dissc-yale.github.io/ct-ed/?y=iFcomputed__entitlement-siFecs__entitlement"
-                      rel="noreferrer"
-                    >
+                    <Link href="?y=iFcomputed__entitlement-siFecs__entitlement" rel="noreferrer" target="_blank">
                       this view
                     </Link>
                     .
