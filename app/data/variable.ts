@@ -136,19 +136,28 @@ export class Variable {
           names.push(colName)
           display[colName] = isChild || multiVar ? labels.full : labels.category
           formulas[colName] = `d.${id} == null ? null : d.${id}${this.deflate ? ' * d.general__cpi_u_deflator' : ''}`
-          if (this.scale) formulas[colName] = `scale(${formulas[colName]})`
           aggers[colName] = `${this.crossAgg}(d.${colName})`
+          if (this.scale) {
+            const rawName = colName + '_raw'
+            names.push(rawName)
+            formulas[rawName] = formulas[colName]
+            formulas[colName] = `scale(${formulas[colName]})`
+            aggers[rawName] = `${this.crossAgg}(d.${rawName})`
+          }
         })
       } else {
         const colName = isChild ? name : '_' + name
         names.push(colName)
         display[colName] = isChild || multiVar ? this.label() : this.category.labels.variable
         formulas[colName] = this.formula()
-        if (this.scale) {
-          formulas[colName + '_raw'] = formulas[colName]
-          formulas[colName] = `scale(${formulas[colName]})`
-        }
         aggers[colName] = `${this.crossAgg}(d.${colName})`
+        if (this.scale) {
+          const rawName = colName + '_raw'
+          names.push(rawName)
+          formulas[rawName] = formulas[colName]
+          formulas[colName] = `scale(${formulas[colName]})`
+          aggers[rawName] = `${this.crossAgg}(d.${rawName})`
+        }
       }
       if (multiVar) {
         this.additional.forEach((v, i) => {
@@ -167,16 +176,21 @@ export class Variable {
       }
       return {names, display, aggers, data: data.derive(formulas)}
     }
+    const names = [name]
     const f = {[name]: this.formula()}
+    const aggers = {[name]: `${this.crossAgg}(d.${name})`}
     if (this.scale) {
-      f[name + '_raw'] = f[name]
+      const rawName = name + '_raw'
+      names.push(rawName)
+      f[rawName] = f[name]
       f[name] = `scale(${f[name]})`
+      aggers[rawName] = `${this.crossAgg}(d.${rawName})`
     }
     return {
-      names: [name],
+      names,
       display: {[name]: this.category.labels.variable},
-      aggers: {[name]: `${this.crossAgg}(d.${name})`},
-      data: data.derive({[name]: this.formula()}),
+      aggers: aggers,
+      data: data.derive(f),
     }
   }
   getColNames(access: string = '') {

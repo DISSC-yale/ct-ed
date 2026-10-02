@@ -167,7 +167,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
               url[e as 'min_time'] =
                 '' + (e === 'min_time' ? Math.max(+parts[1], +view.min_time) : Math.min(+parts[1], +view.max_time))
             } else if (e in variableParams) {
-              url[e as 'lines'] = e in categories ? e : ''
+              url[e as 'lines'] = parts[1] in categories ? parts[1] : ''
             } else {
               url[e as 'color'] = parts[1]
             }
@@ -203,7 +203,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       })
       requestAnimationFrame(() => window.history.replaceState(void 0, '', '?' + p.join('&')))
     },
-    [defaults.url, defaults.xy],
+    [defaults],
   )
   const editView = (state: ViewDef, action: ViewAction) => {
     if (action.key === 'replace') {

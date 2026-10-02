@@ -73,8 +73,8 @@ export function makeSeries(
     y: [Infinity, -Infinity, -Infinity],
     panel: [1, 1],
   }
-  const xBar = lines && !view.x.multi && view.x.firstType in categoricalType
-  const yBar = lines && !view.y.multi && view.y.firstType in categoricalType
+  const xBar = lines && !view.x.additional.length && !view.x.multi && view.x.firstType in categoricalType
+  const yBar = lines && !view.y.additional.length && !view.y.multi && view.y.firstType in categoricalType
   const assignColors = lines && lines !== entity
   const colorMap = assignColors ? indexMap(selectData, lines) : {}
   const varIndices: {[index: string]: number} = {}
@@ -115,14 +115,16 @@ export function makeSeries(
           .select(xRefs.names, yRefs.names, lineVars)
       }
       d = d.reify()
-      const keepVars = d.columnNames().filter(col => otherVars.includes(col))
+      const keepVars = d.columnNames().filter(col => otherVars.includes(col) || col.endsWith('_raw'))
       keepVars.forEach((v, i) => (varIndices[v] = i + 2))
+      if (view.x.scale) xRefs.names = xRefs.names.filter(n => !n.endsWith('_raw'))
+      if (view.y.scale) yRefs.names = yRefs.names.filter(n => !n.endsWith('_raw'))
       const asisLevels =
         xBar || yBar ?
           (d.rollup({x: xBar ? 'distinct(d.x)' : 0, y: yBar ? 'distinct(d.y)' : 0}).object(0) as {x: number; y: number})
         : {x: 0, y: 0}
-      const xAsBar = asisLevels.x === 1 && xBar
-      const yAsBar = asisLevels.y === 1 && yBar
+      const xAsBar = xBar && asisLevels.x === 1
+      const yAsBar = yBar && asisLevels.y === 1
       const asBar = xAsBar || yAsBar
       xRefs.names.forEach((sx, sxi) => {
         yRefs.names.forEach((sy, syi) => {

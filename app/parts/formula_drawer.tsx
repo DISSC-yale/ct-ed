@@ -101,7 +101,7 @@ export function FormulaDrawer({
                 <Close />
               </IconButton>
             }
-            title="Entitlement Formula"
+            title="ECS Formula"
             subheader={
               <Typography variant="caption" sx={{opacity: 0.75}}>
                 These apply to the &quot;Computed&quot; variables, which are version of the ECS formula components.

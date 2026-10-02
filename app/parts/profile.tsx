@@ -2,7 +2,6 @@ import {Close} from '@mui/icons-material'
 import {
   Autocomplete,
   Box,
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -267,9 +266,6 @@ export function ProfileDisplay() {
   const clearProfile = () => setProfile('')
   return (
     <>
-      <Button variant="text" color="inherit" onClick={() => setProfile(Object.keys(allEntities)[0])}>
-        District Profile
-      </Button>
       <Dialog
         open={!!view.profile}
         onClose={clearProfile}

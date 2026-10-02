@@ -1,4 +1,4 @@
-import {Close, Download} from '@mui/icons-material'
+import {Close} from '@mui/icons-material'
 import {
   Autocomplete,
   Button,
@@ -23,13 +23,12 @@ function makeName(view: ViewDef, version: string) {
     view.time_agg === 'all' ? '' : '_' + (view.time_agg === 'specified' ? view.select_time : view.time_agg + '-time')
   }`
 }
-export function Export() {
+export function Export({open, setOpen}: {open: boolean; setOpen: (open: boolean) => void}) {
   const {meta} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const fullData = useContext(FullDataContext)
   const selected = useContext(SelectedContext)
 
-  const [open, setOpen] = useState(false)
   const [fullExport, setFullExport] = useState(false)
   const data = useMemo(() => (fullExport ? fullData : selected), [fullExport, fullData, selected])
   const allColumns = useMemo(() => data.columnNames(), [data])
@@ -38,11 +37,8 @@ export function Export() {
   const close = () => setOpen(!open)
   return (
     <>
-      <Button color="inherit" onClick={close} startIcon={<Download />}>
-        Export
-      </Button>
       {open && (
-        <Dialog open={open} onClose={close} hideBackdrop>
+        <Dialog open={open} onClose={close}>
           <DialogTitle sx={{pt: 1, pb: 1}}>Data Export</DialogTitle>
           <IconButton
             aria-label="close export menu"

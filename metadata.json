@@ -91,7 +91,7 @@
         "min": 0,
         "max": 7,
         "step_size": 1,
-        "value": 3
+        "value": 4
       },
       "frlp": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
       "engl_mhi": {
@@ -169,7 +169,7 @@
       }
     },
     "param_history": {
-      "2018": {"underfunded": 0.15, "overfunded": -0.1, "ell": 0.15, "final_digits": 0},
+      "2018": {"underfunded": 0.15, "overfunded": -0.1, "ell": 0.15, "final_digits": 2},
       "2019": {
         "overfunded": 0.25,
         "underfunded": 0.041,
@@ -209,24 +209,25 @@
     "step_history": {
       "2018": {
         "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+round(s.poverty_concentrated_adj, p.digits)",
-        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
-        "grant_adjustment": "s.fully_funded_grant-(d.actual_fy2017*.78)",
-        "entitlement": "s.funding_adjustment+(d.actual_fy2017*.78)"
+        "regional_bonus": "round(d.students_sent_to_regional_district*(round((d.n_regional_district_grades/13)*p.regional_bonus, p.digits)), p.dollar_digits)",
+        "grant_adjustment": "s.fully_funded_grant-round(d.actual_fy2017*.78, p.dollar_digits)",
+        "funding_adjustment": "s.more_than_last ? round(s.grant_adjustment*p.underfunded, p.dollar_digits) : round(s.grant_adjustment*p.overfunded, p.final_digits)",
+        "entitlement": "s.funding_adjustment+round(d.actual_fy2017*.78, p.dollar_digits)"
       },
       "2019": {
         "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
-        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "regional_bonus": "round(d.students_sent_to_regional_district*(round((d.n_regional_district_grades/13)*p.regional_bonus, p.digits)), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017"
       },
       "2020": {
         "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
-        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "regional_bonus": "round(d.students_sent_to_regional_district*(round((d.n_regional_district_grades/13)*p.regional_bonus, p.digits)), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
         "more_than_last": "s.fully_funded_grant > d.actual_fy2017"
       },
       "2021": {
         "total_need_students": "d.resident_students+s.frpl_students+s.ell_students+s.poverty_concentrated_adj",
-        "regional_bonus": "round(d.students_sent_to_regional_district*((d.n_regional_district_grades/13)*p.regional_bonus), p.dollar_digits)",
+        "regional_bonus": "round(d.students_sent_to_regional_district*(round((d.n_regional_district_grades/13)*p.regional_bonus, p.digits)), p.dollar_digits)",
         "grant_adjustment": "s.fully_funded_grant-d.actual_fy2017",
         "more_than_last": "s.fully_funded_grant > d.actual_fy2017",
         "entitlement": "!d.alliance_district_flag ? s.entitlement_no_alliance : row_max(d.actual_fy2017, s.entitlement_no_alliance)"

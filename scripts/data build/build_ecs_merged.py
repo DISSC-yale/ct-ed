@@ -287,9 +287,9 @@ COL_MAP_FY2020 = [
     (29, "computed__final_base_aid_ratio", "computed"),
     (30, "input__students_sent_to_regional_district", "input"),
     (31, "input__n_regional_district_grades", "input"),
-    (32, "computed__regional_district_bonus", "computed"),
-    (33, "computed__base_formula_aid", "computed"),
-    (34, "computed__fully_funded_grant", "computed"),
+    (33, "computed__regional_district_bonus", "computed"),
+    (34, "computed__base_formula_aid", "computed"),
+    (35, "computed__fully_funded_grant", "computed"),
     (36, "input__ecs_actual_fy2017", "input"),
     (37, "input__prior_year_entitlement", "input"),  # FY19 entitlement
     (

@@ -204,7 +204,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
       const yInfo = variables[yVar]
       return (
         '<div class="tooltip-table">' +
-        (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : seriesName) : '') +
+        (view.lines ? marker + (entity ? entity.name + ' (' + entity.id + ')' : '') : '') +
         '<table>' +
         (info.refs.time in indices.current && !(info.refs.time === view.x.id || info.refs.time === view.y.id) ?
           '<tr><td>' +
@@ -216,16 +216,20 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
         ('string' === typeof value[0] && value[0] === seriesName ?
           ''
         : '<tr><td>' +
-          xInfo.labels.full +
+          view.x.label() +
           '</td><td><strong>' +
-          formatValue(value[0], xInfo, view.x) +
+          (view.x.scale ?
+            `${formatValue(value[indices.current[parts[0] + '_raw']], xInfo, view.x)} (<i>z</> = ${formatValue(value[0], xInfo, view.x)})`
+          : formatValue(value[0], xInfo, view.x)) +
           '</strong></td></tr>') +
         ('string' === typeof value[1] && value[1] === seriesName ?
           ''
         : '<tr><td>' +
-          yInfo.labels.full +
+          view.y.label() +
           '</td><td><strong>' +
-          formatValue(value[1], yInfo, view.y) +
+          (view.y.scale ?
+            `${formatValue(value[indices.current[parts[2] + '_raw']], yInfo, view.y)} (<i>z</> = ${formatValue(value[1], yInfo, view.y)})`
+          : formatValue(value[1], yInfo, view.y)) +
           '</strong></td></tr>') +
         '</table></div>'
       )
