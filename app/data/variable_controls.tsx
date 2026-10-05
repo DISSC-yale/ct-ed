@@ -152,13 +152,28 @@ function FieldControls({
           {variable.firstType === 'dollar' ?
             <Tooltip title="Adjust for inflation." placement="left">
               <FormControlLabel
-                label="Deflate"
+                label="Adjust for Inflation"
                 labelPlacement="end"
                 control={
                   <Switch
                     size="small"
                     checked={variable.deflate}
                     onChange={() => update({key: 'variable', which: name, part: 'deflate', value: !variable.deflate})}
+                  />
+                }
+              />
+            </Tooltip>
+          : <></>}
+          {'undefined' !== typeof variable.computed ?
+            <Tooltip title="Use the computed version, rather than that provided in the ECS shells." placement="left">
+              <FormControlLabel
+                label="Use Computed"
+                labelPlacement="end"
+                control={
+                  <Switch
+                    size="small"
+                    checked={variable.computed}
+                    onChange={() => update({key: 'variable', which: name, part: 'computed', value: !variable.computed})}
                   />
                 }
               />

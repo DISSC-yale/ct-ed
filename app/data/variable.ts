@@ -48,19 +48,20 @@ export class Variable {
   firstType = 'value'
   adjuster?: AdjusterVariable
   additional: Variable[] = []
+  computed?: boolean
 
-  constructor(spec: Variable | string, categories?: Categories, selection?: VariableInfo | VariableInfo[]) {
+  constructor(spec: Partial<Variable> | string, categories?: Categories, selection?: VariableInfo | VariableInfo[]) {
     if ('string' === typeof spec) spec = this.fromString(spec)
     if (selection) spec.selection = Array.isArray(selection) ? [...selection] : [selection]
     if (!categories && spec.categories) categories = spec.categories
-    if (categories && !(spec.id in categories)) spec.id = 'computed__entitlement'
-    this.id = spec.id
-    const [section, name] = spec.id.split('__')
+    this.id = spec.id || 'computed__entitlement'
+    if (categories && !(this.id in categories)) this.id = 'computed__entitlement'
+    const [section, name] = this.id.split('__')
     this.category =
-      categories && spec.id in categories ?
-        categories[spec.id]
+      categories ?
+        categories[this.id]
       : {
-          key: spec.id,
+          key: this.id,
           parts: {section, variable: name},
           labels: {section, variable: name},
           levels: [],
@@ -69,18 +70,27 @@ export class Variable {
           firstInstance: spec.category ? spec.category.firstInstance : undefined,
         }
     this.categories = categories || spec.categories
-    if ('agg' in spec) this.agg = spec.agg
-    if ('multi' in spec) this.multi = spec.multi
-    if ('scale' in spec) this.scale = spec.scale
-    if ('deflate' in spec) this.deflate = spec.deflate
-    if ('firstType' in spec) this.firstType = spec.firstType
+    if ('agg' in spec) this.agg = spec.agg as 'none'
+    if ('multi' in spec) this.multi = spec.multi as true
+    if ('scale' in spec) this.scale = spec.scale as true
+    if ('deflate' in spec) this.deflate = spec.deflate as true
+    if ('firstType' in spec) this.firstType = spec.firstType as 'value'
+    if ('computed' in spec) this.computed = spec.computed as true
+    const isComputed = this.id.startsWith('computed_')
+    if (categories && (isComputed || this.id.startsWith('ecs_'))) {
+      const pair = (isComputed ? 'ecs__' : 'computed__') + this.id.split('__', 2)[1]
+      if (pair in categories) {
+        this.computed = isComputed
+      }
+    }
     if ('adjuster' in spec && spec.adjuster) {
       this.adjuster = spec.adjuster
       if (categories && !this.adjuster.variable.categories) {
         this.adjuster.variable = new Variable(this.adjuster.variable, this.categories)
       }
     }
-    if ('additional' in spec) this.additional = spec.additional.map(v => new Variable(v, this.categories))
+    if ('additional' in spec && Array.isArray(spec.additional))
+      this.additional = spec.additional.map(v => new Variable(v, this.categories))
     if (categories && spec.selection && spec.selection.length) {
       this.selection = []
       spec.selection.forEach(cat => {
@@ -278,6 +288,13 @@ export class Variable {
       partial.additional = multi.map(s => new Variable(s, this.categories))
     }
     return partial as Variable
+  }
+  setComputed(computed: boolean) {
+    this.id = (computed ? 'computed__' : 'ecs__') + this.id.split('__', 2)[1]
+    this.computed = computed
+    if (this.categories) {
+      this.category = this.categories[this.id]
+    }
   }
 }
 

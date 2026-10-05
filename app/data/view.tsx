@@ -33,7 +33,7 @@ type Operator = 'none' | '-' | '*' | '/'
 type VariableAction = {key: 'variable'; which: 'x' | 'y'} & (
   | {part: 'selection'; value: VariableInfo[]}
   | {part: 'agg'; value: string}
-  | {part: 'deflate' | 'multi' | 'scale' | 'adjuster.remove'; value: boolean}
+  | {part: 'deflate' | 'computed' | 'multi' | 'scale' | 'adjuster.remove'; value: boolean}
   | {part: 'adjuster'; value: {operator: Operator; variable: Variable}}
   | {part: 'adjuster.action'; action: ViewAction}
   | {part: 'adjuster.operator'; value: Operator}
@@ -74,6 +74,8 @@ const timeSelectors = {
 function applyVariableAction(variable: Variable, action: VariableAction) {
   if (action.part === 'selection') {
     variable.setSelection(action.value)
+  } else if (action.part === 'computed') {
+    variable.setComputed(action.value)
   } else if (action.part !== 'adjuster.action' && action.part !== 'additional.action') {
     variable[action.part as 'multi'] = action.value as boolean
     if (action.part === 'multi' && !action.value) {

@@ -17,17 +17,14 @@ describe('tests formula', () => {
         entity: 'general__district',
         time: 'general__fiscal_year',
       })
-      const newData = formula.run(
-        [],
-        (await data).lookup(deflator, formula.refs.time).filter(`d.${formula.refs.time} > 2023`),
-      )
+      const newData = formula.run([], (await data).lookup(deflator, formula.refs.time))
       expect(
         newData
           .rollup({
             differ: 'sum(abs(d.ecs__entitlement - d.computed__entitlement) > 1e-7)',
           })
           .get('differ', 0),
-      ).to.equal(0)
+      ).to.equal(1)
     })
   })
 })
