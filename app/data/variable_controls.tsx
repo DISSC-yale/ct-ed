@@ -218,7 +218,7 @@ function FieldControls({
                     key: 'variable',
                     which: name,
                     part: 'adjuster',
-                    value: {operator: 'none', variable: new Variable(variable.id, categories)},
+                    value: {operator: 'none', variable: new Variable(variable, categories)},
                   })
                 }
               >
@@ -255,21 +255,6 @@ function FieldControls({
             variables={variables}
           />
         </Stack>
-      )}
-      {!isAdjuster && !isAdditional && (
-        <Button
-          size="small"
-          onClick={() =>
-            update({
-              key: 'variable',
-              which: name,
-              part: 'additional',
-              value: new Variable(variable.id, categories),
-            })
-          }
-        >
-          Add Variable
-        </Button>
       )}
       {!isAdjuster && !isAdditional && variable.additional.length ?
         <Accordion variant="outlined" defaultExpanded={true}>
@@ -318,6 +303,21 @@ function FieldControls({
           </AccordionDetails>
         </Accordion>
       : <></>}
+      {!isAdjuster && !isAdditional && (
+        <Button
+          size="small"
+          onClick={() =>
+            update({
+              key: 'variable',
+              which: name,
+              part: 'additional',
+              value: new Variable(variable, categories),
+            })
+          }
+        >
+          Add Variable
+        </Button>
+      )}
     </Stack>
   )
 }

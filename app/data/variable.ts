@@ -31,7 +31,9 @@ export type Category = {
   firstInstance?: VariableInfo
 }
 export type Categories = {[key: string]: Category}
-type AdjusterVariable = {operator: 'none' | '-' | '*' | '/'; variable: Variable}
+export type SummaryType = 'none' | 'sum' | 'mean' | 'median'
+export type Operator = 'none' | '-' | '*' | '/'
+type AdjusterVariable = {operator: Operator; variable: Variable}
 const operatorMap = {none: 'n', '-': 's', '*': 'm', '/': 'd'}
 const operatorLabelMap = {none: 'and', '-': '-', '*': '*', '/': '/'}
 
@@ -117,7 +119,7 @@ export class Variable {
       this.firstType = this.selection[0].type
     }
     if ('undefined' === typeof spec.deflate && this.firstType === 'dollar') {
-      this.deflate = true
+      this.deflate = false
     }
   }
   formula() {

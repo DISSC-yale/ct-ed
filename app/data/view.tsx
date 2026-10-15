@@ -1,7 +1,7 @@
 import {type ActionDispatch, createContext, useCallback, useContext, useMemo, useReducer} from 'react'
 import {DataContext, Resources, type Entities} from './load'
 import {ColumnTable} from 'arquero'
-import {Variable, type VariableInfo} from './variable'
+import {Variable, type Operator, type VariableInfo} from './variable'
 import type {ActiveParams} from './formula'
 
 export type Variants = 'raw' | 'log' | 'percent'
@@ -27,8 +27,6 @@ export type ViewDef = {
   advanced: boolean
   formula_params: ActiveParams
 }
-
-type Operator = 'none' | '-' | '*' | '/'
 
 type VariableAction = {key: 'variable'; which: 'x' | 'y'} & (
   | {part: 'selection'; value: VariableInfo[]}
