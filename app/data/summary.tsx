@@ -17,8 +17,8 @@ export default function SummaryTable() {
           computed_entitlement: 'round(sum(d.computed__entitlement))',
         })
         .object(0) as {[key: string]: number}
-      totals.full_grant_diff = totals.full_grant - totals.computed_full_grant
-      totals.entitlement_diff = totals.entitlement - totals.computed_entitlement
+      totals.full_grant_diff = totals.computed_full_grant - totals.full_grant
+      totals.entitlement_diff = totals.computed_entitlement - totals.entitlement
       return totals
     }
   }, [data])
@@ -34,7 +34,7 @@ export default function SummaryTable() {
               {formatValue(latestTotals.computed_full_grant)} (
               <Tooltip
                 placement="top"
-                title="Difference between official ECS fully funded grant and the version computed here."
+                title="Official ECS fully funded grant subtracted from the version computed here."
               >
                 <Typography variant="caption" color={latestTotals.full_grant_diff < 0 ? 'error' : 'success'}>
                   {formatValue(latestTotals.full_grant_diff)}
@@ -49,7 +49,7 @@ export default function SummaryTable() {
             </TableCell>
             <TableCell>
               {formatValue(latestTotals.computed_entitlement)} (
-              <Tooltip title="Difference between official ECS entitlement with alliance harm held and the version computed here.">
+              <Tooltip title="Official ECS entitlement with alliance harm held subtracted from the version computed here.">
                 <Typography variant="caption" color={latestTotals.entitlement_diff < 0 ? 'error' : 'success'}>
                   {formatValue(latestTotals.entitlement_diff)}
                 </Typography>
