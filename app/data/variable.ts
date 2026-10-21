@@ -1,6 +1,7 @@
 import {addFunction, addWindowFunction, type ColumnTable} from 'arquero'
 import type {AggregateOperator} from 'arquero/dist/types/op/aggregate-functions'
 import {statistics} from 'echarts-stat'
+import type {LineAgg} from './view'
 
 export type VariableTypes =
   | 'time'
@@ -73,6 +74,7 @@ export class Variable {
         }
     this.categories = categories || spec.categories
     if ('agg' in spec) this.agg = spec.agg as 'none'
+    if ('crossAgg' in spec) this.crossAgg = spec.crossAgg as 'mean'
     if ('multi' in spec) this.multi = spec.multi as true
     if ('scale' in spec) this.scale = spec.scale as true
     if ('deflate' in spec) this.deflate = spec.deflate as true
@@ -134,9 +136,10 @@ export class Variable {
     }
     return id
   }
-  addTo(name: string, data: ColumnTable, isChild?: boolean) {
+  addTo(name: string, data: ColumnTable, isChild?: boolean, agg?: LineAgg) {
     const multiVar = isChild || this.additional.length
     const multiLevel = this.multi && this.selection.length > 1 && this.agg === 'none'
+    const aggFun = agg || this.crossAgg
     if (multiVar || multiLevel) {
       const names: string[] = []
       const display: {[key: string]: string} = {}
@@ -148,13 +151,13 @@ export class Variable {
           names.push(colName)
           display[colName] = isChild || multiVar ? labels.full : labels.category
           formulas[colName] = `d.${id} == null ? null : d.${id}${this.deflate ? ' * d.general__cpi_u_deflator' : ''}`
-          aggers[colName] = `${this.crossAgg}(d.${colName})`
+          aggers[colName] = `${agg || this.crossAgg}(d.${colName})`
           if (this.scale) {
             const rawName = colName + '_raw'
             names.push(rawName)
             formulas[rawName] = formulas[colName]
             formulas[colName] = `scale(${formulas[colName]})`
-            aggers[rawName] = `${this.crossAgg}(d.${rawName})`
+            aggers[rawName] = `${aggFun}(d.${rawName})`
           }
         })
       } else {
@@ -162,13 +165,13 @@ export class Variable {
         names.push(colName)
         display[colName] = isChild || multiVar ? this.label() : this.category.labels.variable
         formulas[colName] = this.formula()
-        aggers[colName] = `${this.crossAgg}(d.${colName})`
+        aggers[colName] = `${aggFun}(d.${colName})`
         if (this.scale) {
           const rawName = colName + '_raw'
           names.push(rawName)
           formulas[rawName] = formulas[colName]
           formulas[colName] = `scale(${formulas[colName]})`
-          aggers[rawName] = `${this.crossAgg}(d.${rawName})`
+          aggers[rawName] = `${aggFun}(d.${rawName})`
         }
       }
       if (multiVar) {
@@ -190,18 +193,18 @@ export class Variable {
     }
     const names = [name]
     const f = {[name]: this.formula()}
-    const aggers = {[name]: `${this.crossAgg}(d.${name})`}
+    const aggers = {[name]: `${aggFun}(d.${name})`}
     if (this.scale) {
       const rawName = name + '_raw'
       names.push(rawName)
       f[rawName] = f[name]
       f[name] = `scale(${f[name]})`
-      aggers[rawName] = `${this.crossAgg}(d.${rawName})`
+      aggers[rawName] = `${aggFun}(d.${rawName})`
     }
     return {
       names,
       display: {[name]: this.category.labels.variable},
-      aggers: aggers,
+      aggers,
       data: data.derive(f),
     }
   }

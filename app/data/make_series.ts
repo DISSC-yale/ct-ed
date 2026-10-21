@@ -93,8 +93,8 @@ export function makeSeries(
       let d = selectData
       if (panelX) d = d.filter(`d.${panelX} === ` + ('string' === typeof x ? `'${x}'` : x))
       if (panelY) d = d.filter(`d.${panelY} === ` + ('string' === typeof y ? `'${y}'` : y))
-      const yRefs = view.y.addTo('y', d)
-      const xRefs = view.x.addTo('x', yRefs.data)
+      const yRefs = view.y.addTo('y', d, false, view.line_agg)
+      const xRefs = view.x.addTo('x', yRefs.data, false, view.line_agg)
       d = xRefs.data
       if (aggLines) d = d.filter(`d.${lines} !== null`)
       if (!d.numRows()) return

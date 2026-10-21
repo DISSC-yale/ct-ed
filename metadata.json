@@ -93,7 +93,7 @@
         "step_size": 1,
         "value": 4
       },
-      "frlp": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
+      "frpl": {"label": "A. Need weighting factor.", "category": "Primary Weight", "value": 0.3},
       "engl_mhi": {
         "label": "B. Equalized net grand list per capita and median household income threshold.",
         "category": "Primary Weight",
@@ -239,7 +239,7 @@
     },
     "steps": {
       "prior_entitlement": "s.entitlement|d.prior_entitlement",
-      "frpl_students": "round(d.frpl_students*p.frlp, p.digits)",
+      "frpl_students": "round(d.frpl_students*p.frpl, p.digits)",
       "resident_students": "round(d.resident_students*p.resident, p.digits)",
       "high_poverty": "round(limit(d.frpl_students-s.resident_students, 0)*p.excess_resident, p.digits)",
       "poverty_portion": "d.frpl_students/d.resident_students",
@@ -292,7 +292,7 @@
     "sp": {"label": "Spending"},
     "ecs": {"label": "Education Cost Sharing"},
     "tot": {"label": "Total"},
-    "frpl": {"label": "Free or Reduced-Price Lunch"},
+    "frpl": {"label": "Free & Reduced Lunch"},
     "mhi": {"label": "Median Household Income"},
     "drg": {"label": "District Reference Group"},
     "engl": {"label": "Equalized Net Grand List"},

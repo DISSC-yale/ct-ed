@@ -2,25 +2,26 @@ import {useContext, useMemo, type ChangeEvent, type ReactElement} from 'react'
 import {Box, Stack, TextField, Tooltip, Typography} from '@mui/material'
 import type {FormulaParam} from './formula'
 import {ViewActionContext, ViewContext, type ViewDef} from './view'
-import {DataContext, type Resources} from './load'
+import {DataContext, translatePart, type Resources} from './load'
 
 function makeInput(
   name: string,
   spec: FormulaParam,
   value: number,
   onChange: (e: ChangeEvent<HTMLInputElement>) => void,
+  nameParts: {[key: string]: {label: string}}
 ) {
   return (
     <Box key={name}>
       <Tooltip placement="left" title={spec.label}>
-        <TextField value={value} size="small" type="number" label={name} onChange={onChange} fullWidth></TextField>
+        <TextField value={value} size="small" type="number" label={translatePart(name, nameParts)} onChange={onChange} fullWidth></TextField>
       </Tooltip>
     </Box>
   )
 }
 
 export default function FormulaMenu() {
-  const {formula} = useContext(DataContext) as Resources
+  const {formula, meta} = useContext(DataContext) as Resources
   const view = useContext(ViewContext) as ViewDef
   const viewAction = useContext(ViewActionContext)
   const params = formula.param_specs
@@ -32,7 +33,7 @@ export default function FormulaMenu() {
       if (Array.isArray(paramSpec.value)) {
       } else {
         const control = makeInput(name, paramSpec, view.formula_params[name] as number, e =>
-          viewAction({key: 'formula', which: name, value: +e.target.value}),
+          viewAction({key: 'formula', which: name, value: +e.target.value}), meta.variable_parts
         )
         categories[paramSpec.category].push(control)
       }

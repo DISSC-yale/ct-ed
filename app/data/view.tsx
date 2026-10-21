@@ -6,6 +6,7 @@ import type {ActiveParams} from './formula'
 
 export type Variants = 'raw' | 'log' | 'percent'
 export type TimeAgg = 'all' | 'first' | 'specified' | 'last' | 'mean' | 'median'
+export type LineAgg = 'sum' | 'mean' | 'median'
 export type ViewDef = {
   lock_range: boolean
   x: Variable
@@ -16,6 +17,7 @@ export type ViewDef = {
   x_panels: string
   y_panels: string
   time_agg: TimeAgg
+  line_agg: LineAgg
   select_time: string
   entity_center: boolean
   entities: string
@@ -50,6 +52,7 @@ export type ViewAction =
       value: string
     }
   | {key: 'time_agg'; value: TimeAgg}
+  | {key: 'line_agg'; value: LineAgg}
   | {key: 'lock_range' | 'entity_center' | 'advanced'; value: boolean}
   | {key: 'min_time' | 'max_time'; value: string}
   | {key: 'entities'; value: {[index: string]: boolean}}
@@ -134,6 +137,7 @@ export function DataView({children}: Readonly<{children?: React.ReactNode}>) {
       x_panels: '',
       y_panels: '',
       time_agg: 'all',
+      line_agg: 'mean',
       select_time: '2025',
       entity_center: false,
       entities: '',

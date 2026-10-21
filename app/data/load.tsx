@@ -41,7 +41,7 @@ const dollarVars =
 const percents = /_pct|_percent|_rate/
 const firstLetters = /\b(\w)/g
 type partLabels = {[key: string]: {label: string}}
-function translatePart(p: string, parts: partLabels) {
+export function translatePart(p: string, parts: partLabels) {
   return p
     .split('_')
     .map(sp => (sp in parts ? parts[sp].label : sp.replaceAll(firstLetters, l => l.toUpperCase())))

@@ -16,7 +16,7 @@ import {
 } from '@mui/material'
 import {useContext, useMemo} from 'react'
 import {DataContext, type Resources} from '../data/load'
-import {ViewActionContext, ViewContext, ViewDef} from '../data/view'
+import {ViewActionContext, ViewContext, ViewDef, type LineAgg} from '../data/view'
 import {FilterEntities} from './filter_entities'
 import {FlipCameraAndroid} from '@mui/icons-material'
 import VariableControls from '../data/variable_controls'
@@ -39,6 +39,18 @@ const categoryRank = {
 export function sectionOrder(section: string) {
   return categoryRank[section as 'Revenue'] || 99
 }
+
+const summaryOptions = [
+  <MenuItem key="sum" value="sum">
+    Sum
+  </MenuItem>,
+  <MenuItem key="median" value="median">
+    Median
+  </MenuItem>,
+  <MenuItem key="mean" value="mean">
+    Mean
+  </MenuItem>,
+]
 
 export function DataMenu() {
   const view = useContext(ViewContext) as ViewDef
@@ -107,6 +119,19 @@ export function DataMenu() {
                   update={(value: SelectOption | null) => viewAction({key: 'lines', value: value ? value.key : ''})}
                   clearable={true}
                 />
+                {view.lines !== 'general__district' && (
+                  <FormControl variant="outlined" fullWidth size="small">
+                    <InputLabel id="line_agg_select">Line Aggregation</InputLabel>
+                    <Select
+                      labelId="line_agg_select"
+                      label="Line Aggregation"
+                      value={view.line_agg}
+                      onChange={e => viewAction({key: 'line_agg', value: e.target.value as 'mean'})}
+                    >
+                      {summaryOptions}
+                    </Select>
+                  </FormControl>
+                )}
                 <Typography>Panels</Typography>
                 <Stack direction="row" sx={{alignItems: 'center'}}>
                   <Stack spacing={1} sx={{width: showPanelControls ? 'calc(100% - 40px)' : '100%'}}>
