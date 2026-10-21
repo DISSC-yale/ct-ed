@@ -178,7 +178,7 @@ export class Variable {
         this.additional.forEach((v, i) => {
           const colName = `_${name}${i}_`
           v.scale = this.scale
-          const additions = v.addTo(colName, data, true)
+          const additions = v.addTo(colName, data, true, agg)
           data = additions.data
           additions.names.forEach(n => names.push(n))
           Object.keys(additions.display).forEach(n => {

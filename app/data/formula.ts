@@ -40,6 +40,7 @@ export class Formula {
   param_specs: FormulaParams
   params: ParamValues
   steps: Map<string, FormulaStep>
+  default_values: ActiveParams
   values: ActiveParams
   refs: {entity: string; time: string}
   min_time = 0
@@ -51,6 +52,7 @@ export class Formula {
     this.param_offsets = JSON.parse(JSON.stringify(this.param_history))
     this.param_specs = spec.params ? JSON.parse(JSON.stringify(spec.params)) : {}
     this.params = {}
+    this.default_values = {}
     this.values = {}
     this.steps = new Map()
     this.refs = refs || {entity: '', time: ''}
@@ -58,7 +60,7 @@ export class Formula {
       const param = this.param_specs[name]
       this.params[name] = 'number' === typeof param.value ? param.value : (param as BreakpointParam)
       param.used_by = []
-      this.values[name] =
+      this.default_values[name] = this.values[name] =
         'number' === typeof param.value ? param.value : renderBreakpointParam(param as BreakpointParam)
     })
     Object.keys(this.param_history).forEach(time => {
@@ -177,8 +179,9 @@ export class Formula {
         if (!updated[parent]) this.appendStep(parent, time, state)
       })
     }
+    const initialParams = time <= (this.values.apply_after as number) ? this.default_values : this.values
     if (time in this.param_offsets) {
-      const params = {...this.values}
+      const params = {...initialParams}
       const historical = this.param_offsets[time]
       Object.keys(historical).forEach(param => {
         const offset = historical[param]
@@ -190,7 +193,7 @@ export class Formula {
       })
       data = data.params({p: params}) as ColumnTable
     } else {
-      data = data.params({p: this.values}) as ColumnTable
+      data = data.params({p: initialParams}) as ColumnTable
     }
     const params = (data.params() as {p: ActiveParams}).p
     const colName = `computed__${name}`

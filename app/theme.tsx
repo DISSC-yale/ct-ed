@@ -4,8 +4,10 @@ import {CssBaseline, ThemeProvider, createTheme} from '@mui/material'
 import type {ColorSystemOptions} from '@mui/material/styles'
 
 export const colorSchemes: {dark: ColorSystemOptions; light: ColorSystemOptions} = {
-  dark: {palette: {mode: 'dark', primary: {main: '#a5cdff'}, secondary: {main: '#68abff'}}},
-  light: {palette: {mode: 'light', primary: {main: '#286dc0'}, secondary: {main: '#3371e7'}}},
+  dark: {palette: {mode: 'dark', success: {main: '#a5cdff'}, primary: {main: '#a5cdff'}, secondary: {main: '#68abff'}}},
+  light: {
+    palette: {mode: 'light', success: {main: '#286dc0'}, primary: {main: '#286dc0'}, secondary: {main: '#3371e7'}},
+  },
 }
 
 const theme = createTheme({colorSchemes: colorSchemes})

@@ -22,7 +22,7 @@ import {FormulaDrawer} from './parts/formula_drawer'
 import {MainMenu} from './parts/menu'
 
 const MENU_WIDTH = 350
-const DRAWER_HEIGHT = 33
+const DRAWER_HEIGHT = 34
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(true)

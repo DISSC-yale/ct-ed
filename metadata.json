@@ -162,6 +162,11 @@
         "step_size": 100,
         "value": 100
       },
+      "apply_after": {
+        "label": "Use the set parameters after this year, rather than their recorded values.",
+        "category": "Precision",
+        "value": 2017
+      },
       "calculated_prior_after": {
         "label": "Use the calculated rather than provided prior year entitlement after this year.",
         "category": "Precision",

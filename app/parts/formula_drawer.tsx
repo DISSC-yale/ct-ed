@@ -1,10 +1,22 @@
 import {Close} from '@mui/icons-material'
-import {Box, Button, Card, CardActions, CardContent, CardHeader, Drawer, IconButton, Typography} from '@mui/material'
+import {
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  CardHeader,
+  Drawer,
+  IconButton,
+  Stack,
+  Typography,
+} from '@mui/material'
 import {useCallback, useContext, useEffect, useRef, useState} from 'react'
 import FormulaMenu from '../data/formula_menu'
 import {FormulaGraphDisplay} from './formula_graph_display'
 import {ViewActionContext} from '../data/view'
 import {DataContext, type Resources} from '../data/load'
+import SummaryTable from '../data/summary'
 
 export function FormulaDrawer({
   open,
@@ -96,18 +108,24 @@ export function FormulaDrawer({
           ></Box>
           <CardHeader
             sx={{p: 1}}
-            action={
-              <IconButton aria-label="Close formula menu" onClick={toggle} className="close-button">
-                <Close />
-              </IconButton>
-            }
             title="ECS Formula"
             subheader={
-              <Typography variant="caption" sx={{opacity: 0.75}}>
-                These apply to the &quot;Computed&quot; variables, which are version of the ECS formula components.
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{justifyContent: 'space-between'}}>
+                <Typography variant="caption" sx={{opacity: 0.75}}>
+                  These apply to the &quot;Computed&quot; variables, which are version of the ECS formula components.
+                </Typography>
+                <SummaryTable />
+              </Stack>
             }
           />
+          <IconButton
+            aria-label="Close formula menu"
+            onClick={toggle}
+            className="close-button"
+            sx={{position: 'absolute', right: 0}}
+          >
+            <Close />
+          </IconButton>
           <CardContent sx={{pb: 0, pt: 0, height: '100%', overflow: 'auto'}}>
             <FormulaMenu />
           </CardContent>

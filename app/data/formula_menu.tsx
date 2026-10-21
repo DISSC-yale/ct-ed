@@ -9,12 +9,19 @@ function makeInput(
   spec: FormulaParam,
   value: number,
   onChange: (e: ChangeEvent<HTMLInputElement>) => void,
-  nameParts: {[key: string]: {label: string}}
+  nameParts: {[key: string]: {label: string}},
 ) {
   return (
     <Box key={name}>
       <Tooltip placement="left" title={spec.label}>
-        <TextField value={value} size="small" type="number" label={translatePart(name, nameParts)} onChange={onChange} fullWidth></TextField>
+        <TextField
+          value={value}
+          size="small"
+          type="number"
+          label={translatePart(name, nameParts)}
+          onChange={onChange}
+          fullWidth
+        ></TextField>
       </Tooltip>
     </Box>
   )
@@ -32,14 +39,18 @@ export default function FormulaMenu() {
       if (!(paramSpec.category in categories)) categories[paramSpec.category] = []
       if (Array.isArray(paramSpec.value)) {
       } else {
-        const control = makeInput(name, paramSpec, view.formula_params[name] as number, e =>
-          viewAction({key: 'formula', which: name, value: +e.target.value}), meta.variable_parts
+        const control = makeInput(
+          name,
+          paramSpec,
+          view.formula_params[name] as number,
+          e => viewAction({key: 'formula', which: name, value: +e.target.value}),
+          meta.variable_parts,
         )
         categories[paramSpec.category].push(control)
       }
     })
     return categories
-  }, [view.formula_params, viewAction, params])
+  }, [view.formula_params, viewAction, params, meta.variable_parts])
   const colStyle = {overflow: 'auto', pt: 1, minWidth: 150}
   return (
     <Stack spacing={2} direction="row" sx={{height: '100%', overflowX: 'auto', justifyContent: {lg: 'center'}}}>
