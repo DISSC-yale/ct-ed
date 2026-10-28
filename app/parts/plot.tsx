@@ -299,7 +299,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
                 right: 'right',
                 orient: 'vertical',
                 type: 'scroll',
-                data: seriesNames.length > 1 ? seriesNames : [],
+                data: !isBar && seriesNames.length > 1 ? seriesNames : [],
                 triggerEvent: true,
                 silent: false,
               },
