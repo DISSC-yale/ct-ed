@@ -114,6 +114,18 @@
         "value": 0.1
       },
       "foundation": {"label": "G. Foundation value.", "category": "Primary Funding", "step_size": 1000, "value": 11525},
+      "foundation_adj": {
+        "label": "G2. Added proportion of the prior year's foundation amount.",
+        "category": "Primary Funding",
+        "step_size": 0.1,
+        "value": 0
+      },
+      "prior_foundation_after": {
+        "label": "G3. Year the foundation adjustment starts taking effect.",
+        "category": "Primary Funding",
+        "step_size": 1,
+        "value": 2027
+      },
       "underfunded": {"label": "H. Adjustment for underfunded districts.", "category": "Primary Funding", "value": 1},
       "overfunded": {"label": "I. Adjustment for overfunded districts.", "category": "Primary Funding", "value": 0},
       "resident": {"label": "Resident student adjustment factor.", "category": "Secondary", "value": 0.6},
@@ -263,7 +275,9 @@
       "base_aid_ratio_final": "s.base_aid_ratio+p.pic",
       "regional_bonus": "round(d.students_sent_to_regional_district*d.n_regional_district_grades*p.regional_bonus, p.dollar_digits)",
       "endowed_academy_bonus": "round(d.students_sent_to_endowed_academies*d.n_endowed_academy_grades*p.endowed_bonus, p.dollar_digits)",
-      "base_aid": "round(s.total_need_students*s.base_aid_ratio_final*p.foundation, p.dollar_digits)",
+      "prior_foundation": "s.foundation|p.foundation",
+      "foundation": "s.prior_foundation + s.prior_foundation * (g.fiscal_year < p.prior_foundation_after ? 0 : p.foundation_adj)",
+      "base_aid": "round(s.total_need_students*s.base_aid_ratio_final*s.foundation, p.dollar_digits)",
       "fully_funded_grant": "s.regional_bonus+s.endowed_academy_bonus+s.base_aid",
       "full_grant_harm_held": "!d.alliance_district_flag ? s.fully_funded_grant : row_max(d.actual_fy2017, s.prior_entitlement, s.fully_funded_grant)",
       "grant_adjustment": "s.fully_funded_grant-s.prior_entitlement",

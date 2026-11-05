@@ -145,7 +145,10 @@ export class Formula {
     const eq = e
     let m
     while ((m = paramPattern.exec(e))) p.push(m[1])
-    let translated = eq.replaceAll('d.', `d.${this.section}`).replaceAll('s.', 'd.computed__')
+    let translated = eq
+      .replaceAll('d.', `d.${this.section}`)
+      .replaceAll('s.', 'd.computed__')
+      .replaceAll('g.', 'd.general__')
     while ((m = rowFun.exec(translated))) {
       translated = translated.replace(
         m[0],
@@ -165,6 +168,7 @@ export class Formula {
     time: number,
     state: {
       data: ColumnTable
+      priorData: ColumnTable
       updated: {[key: string]: boolean}
     },
   ) {
@@ -197,20 +201,16 @@ export class Formula {
     }
     const params = (data.params() as {p: ActiveParams}).p
     const colName = `computed__${name}`
-    const timeFilter = `d.${this.refs.time} === ${time}`
     const step_state = this.step_history[time]
     let eq = step_state && name in step_state ? step_state[name] : step.equation
     if (isPrior) {
-      if (time < (params.calculated_prior_after as number) || time === this.min_time) {
+      if (
+        !state.priorData.numRows() ||
+        time < (params[`${name}_after` in params ? `${name}_after` : 'calculated_prior_after'] as number)
+      ) {
         eq = eq.split('|')[1]
       } else {
-        state.data = data
-          .filter(timeFilter)
-          .lookup(
-            data.filter(`d.${this.refs.time} === ${time - 1}`).derive({[colName]: eq.split('|')[0]}),
-            this.refs.entity,
-            colName,
-          )
+        state.data = data.lookup(state.priorData.derive({[colName]: eq.split('|')[0]}), this.refs.entity, colName)
         return step
       }
     }
@@ -222,7 +222,6 @@ export class Formula {
         eq = eq.replace(m[0], params[pName])
       }
     }
-    data = data.filter(timeFilter)
     if (name.endsWith('_agg')) {
       const aggTable = data.groupby(this.refs.time).rollup({[colName]: eq})
       state.data = data.lookup(aggTable, this.refs.time, colName)
@@ -248,9 +247,11 @@ export class Formula {
     })
     data = data.derive(calculatedCols)
     if (partial) return data
-    const state = {data: data, updated: {}}
+    const state = {data: data, priorData: data, updated: {}}
     for (let i = times.length; i--; ) {
       const time = times[i]
+      state.priorData = state.data.filter(`d.${this.refs.time} === ${time - 1}`)
+      state.data = state.data.filter(`d.${this.refs.time} === ${time}`)
       sequence.forEach(name => {
         this.appendStep(name, time, state)
       })
