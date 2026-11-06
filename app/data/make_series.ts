@@ -11,6 +11,7 @@ export const colors = {
 }
 const symbols = ['circle', 'triangle', 'diamond', 'rect', 'roundRect', 'pin', 'arrow']
 const categoricalType = {time: true, binary: true, categorical: true}
+const varStarts = {x: true, y: true, _: true}
 
 function indexMap(data: ColumnTable, variable: string) {
   const levelMap: {[index: string]: number} = {}
@@ -84,7 +85,7 @@ export function makeSeries(
   const lineVars = [...new Set([color, symbol, lines].filter(x => !!x))]
   const aggLines = lines && lines !== entity
 
-  if (view.time_agg == 'all') lineVars.push(time)
+  if (view.time_agg === 'all') lineVars.push(time)
   if (color) lineVars.push(color)
 
   xPanelLevels.forEach((x, xi) => {
@@ -95,6 +96,11 @@ export function makeSeries(
       let d = selectData
       if (panelX) d = d.filter(`d.${panelX} === ` + ('string' === typeof x ? `'${x}'` : x))
       if (panelY) d = d.filter(`d.${panelY} === ` + ('string' === typeof y ? `'${y}'` : y))
+      const times: number[] = unique(d, time)
+      const aggTime =
+        view.time_agg === 'mean' || view.time_agg === 'median' ?
+          `, ${view.time_agg} between ${Math.min(...times)} and ${Math.max(...times)}`
+        : ''
       const yRefs = view.y.addTo('y', d, false, yIsCat ? 'mean' : view.line_agg)
       const xRefs = view.x.addTo('x', yRefs.data, false, xIsCat ? 'mean' : view.line_agg)
       d = xRefs.data
@@ -116,6 +122,21 @@ export function makeSeries(
           .rollup({...yRefs.aggers, ...xRefs.aggers})
           .select(xRefs.names, yRefs.names, lineVars)
       }
+      const cols = d.columnNames()
+      if (aggTime) {
+        if (times.length > 1) {
+          const gs: string[] = []
+          const aggs: {[key: string]: string} = {}
+          cols.forEach(col => {
+            if (col.substring(0, 1) in varStarts) {
+              aggs[col] = `${view.time_agg}(d.${col})`
+            } else if (col !== time) {
+              gs.push(col)
+            }
+          })
+          d = d.groupby(gs).rollup(aggs).groupby(gs).select(xRefs.names, yRefs.names, gs)
+        }
+      }
       d = d.reify()
       const keepVars = d.columnNames().filter(col => otherVars.includes(col) || col.endsWith('_raw'))
       keepVars.forEach((v, i) => (varIndices[v] = i + 2))
@@ -125,8 +146,8 @@ export function makeSeries(
         xBar || yBar ?
           (d.rollup({x: xBar ? 'distinct(d.x)' : 0, y: yBar ? 'distinct(d.y)' : 0}).object(0) as {x: number; y: number})
         : {x: 0, y: 0}
-      const xAsBar = xBar && asisLevels.x === 1
-      const yAsBar = yBar && asisLevels.y === 1
+      const xAsBar = !!xBar && asisLevels.x === 1
+      const yAsBar = !!yBar && asisLevels.y === 1
       const asBar = xAsBar || yAsBar
       xRefs.names.forEach((sx, sxi) => {
         yRefs.names.forEach((sy, syi) => {
@@ -202,6 +223,10 @@ export function makeSeries(
         xIndex: xi,
         nYLevels: 1,
         panelEntities,
+        subtext:
+          aggTime ||
+          (times.length === 1 ? ` in ${times[0]}` : ` between ${Math.min(...times)} and ${Math.max(...times)}`),
+        isBar: asBar,
       })
       yRefs.names.forEach(name => updateRanges(name, range.y, d))
       xRefs.names.forEach(name => updateRanges(name, range.x, d))

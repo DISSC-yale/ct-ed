@@ -17,7 +17,7 @@ import {Box, useColorScheme} from '@mui/material'
 import {formatValue, tooltipPlacer} from '../utils'
 import type {Variable} from '../data/variable'
 import {ViewActionContext, ViewDef} from '../data/view'
-import {DataContext, type Resources} from '../data/load'
+import {DataContext, type Entities, type Resources} from '../data/load'
 
 function axisMin({min}: {min: number}, adj = 1) {
   return +(
@@ -74,6 +74,8 @@ export type Panel = {
   xIndex: number
   nXLevels: number
   panelEntities: string[]
+  subtext: string
+  isBar: boolean
 }
 export type PlotInput = {
   series: (LineSeriesOption | BarSeriesOption)[]
@@ -92,23 +94,27 @@ const panelSpacing = {
   gapY: 100,
   legendWidth: 0,
 }
-function resizePanels(frame: {height: number; width: number}, grid: Panel[]) {
+function resizePanels(entities: Entities, frame: {height: number; width: number}, grid: Panel[]) {
   const topGap = panelSpacing[grid[0].label === '' ? 'topNoLabel' : 'top']
   const frameHeight = frame.height - (topGap + panelSpacing.bottom + panelSpacing.gapY * grid[0].nYLevels)
-  const panelHeight = frameHeight / grid[0].nYLevels
+  const panelHeight = frameHeight / grid[0].nYLevels - (grid[0].isBar ? 30 : 0)
   const frameWidth = frame.width - (panelSpacing.left + panelSpacing.legendWidth + panelSpacing.gapX * grid[0].nXLevels)
   const panelWidth = frameWidth / grid[0].nXLevels
-  const title: {label: string; left: number; top: number; panelEntities: string[]}[] = []
+  const title: {label: string; left: number; top: number; subtext: string}[] = []
   grid.forEach(g => {
     g.left = g.xIndex ? panelWidth * g.xIndex + panelSpacing.gapX * (g.xIndex + 1) + 20 : panelSpacing.left
-    g.top = g.yIndex ? panelHeight * g.yIndex + panelSpacing.gapY * (g.yIndex + 1) - 35 : topGap
+    g.top = g.yIndex ? panelHeight * g.yIndex + panelSpacing.gapY * (g.yIndex + 1) - 5 : topGap
     g.height = panelHeight
     g.width = panelWidth
+    const nEntities = g.panelEntities.length
     title.push({
       label: g.label,
       left: g.left - panelSpacing.textGapX,
       top: g.top - panelSpacing.textGapY,
-      panelEntities: g.panelEntities,
+      subtext:
+        (nEntities === 1 && g.panelEntities[0] in entities ?
+          `Data from ${entities[g.panelEntities[0]].name}`
+        : `Observations from ${nEntities} ${nEntities === 1 ? 'district' : 'districts'}`) + g.subtext,
     })
   })
   return {title, grid}
@@ -155,7 +161,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
         const current = chart.getOption()
         const grid = current.grid as Panel[]
         if (grid && grid.length) {
-          chart.setOption(resizePanels(frame, grid))
+          chart.setOption(resizePanels(meta.entities, frame, grid))
           chart.resize()
         }
       }
@@ -280,7 +286,7 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
           }
           const frame = container.current.getBoundingClientRect()
           const labelSize = frame.height < 500 || frame.width < 800 ? 0.7 : 1
-          const {title, grid} = resizePanels(frame, panels)
+          const {title, grid} = resizePanels(meta.entities, frame, panels)
           const seriesNames = [...new Set(series.map(s => s.name).sort())]
           let s = series
           if (isBar) {
@@ -410,14 +416,10 @@ export default function Plot({input, view}: {input: PlotInput; view: ViewDef}) {
                   }
                 : null,
               ],
-              title: title.map(({label, top, left, panelEntities}) => {
-                const nEntities = panelEntities.length
+              title: title.map(({label, top, left, subtext}) => {
                 return {
                   text: label,
-                  subtext:
-                    nEntities === 1 && panelEntities[0] in meta.entities ?
-                      `Data from ${meta.entities[panelEntities[0]].name}`
-                    : `Observations from ${nEntities} ${nEntities === 1 ? 'district' : 'districts'}`,
+                  subtext,
                   top,
                   left,
                   contain: true,
